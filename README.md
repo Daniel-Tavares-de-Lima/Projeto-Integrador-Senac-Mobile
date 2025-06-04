@@ -49,5 +49,5 @@ A aplicação foi construída utilizando:
 Clone o repositório:
 
 ```bash
-git clone https://github.com/Daniel-Tavares-de-Lima/projetoIntegradorSenac.git
+git clone https://github.com/Daniel-Tavares-de-Lima/Projeto-Integrador-Senac-Mobile.git
 cd projetoIntegradorSenac
