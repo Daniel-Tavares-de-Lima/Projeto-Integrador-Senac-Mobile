@@ -5,6 +5,7 @@ import { Appbar, Button, TextInput, DataTable, Provider as PaperProvider } from 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import styles from '../styles/stylesHome';
+import CasesScreen from "./caseScreen";
 
 // Mock data (arrays simples)
 const mockPatients = [
@@ -241,9 +242,9 @@ function HomeContent({ navigation }) {
 
       <View style={styles.menuNav}>
         <View style={styles.menuNavi}>
-          <MaterialIcons name="home" size={30} color="#2d4a78" />
-          <MaterialIcons name="add-circle" size={30} color="#2d4a78" />
-          <MaterialIcons name="search" size={30} color="#2d4f4f4" />
+          <MaterialIcons name="home" size={40} color="#2d4a78" />
+          <MaterialIcons name="add-circle" size={40} color="#2d4a78" />
+          <MaterialIcons name="search" size={40} color="#2d4f4f4" />
         </View>
       </View>
     </View>
@@ -280,6 +281,18 @@ function HomeScreen() {
             ),
            }}
           />
+
+          <Drawer.Screen
+          name="Cases"
+          component={CasesScreen}
+          options={{
+            headerShown: false,
+            title: 'Casos',
+            drawerIcon: ({ color, size }) => (
+              <MaterialIcons name="assignment" size={size} color={color} />
+            ),
+          }}
+        />
       </Drawer.Navigator>
       </PaperProvider>
     );
