@@ -13,6 +13,7 @@ const stylesCases = StyleSheet.create({
   input: {
     marginBottom: 12,
   },
+  
   menuInput: {
     backgroundColor: '#fff',
     padding: 14,
@@ -21,6 +22,7 @@ const stylesCases = StyleSheet.create({
     borderRadius: 4,
     marginBottom: 12,
   },
+
   botaoArquivo: {
     marginVertical: 8,
   },

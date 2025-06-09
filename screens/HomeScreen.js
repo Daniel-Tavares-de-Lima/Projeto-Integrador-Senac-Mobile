@@ -5,8 +5,14 @@ import { Appbar, Button, TextInput, DataTable, Provider as PaperProvider } from 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import styles from '../styles/stylesHome';
+
 import caseScreen from './caseScreen';
 import PatientScreen from './PatientScreen';
+
+import CasesScreen from "./caseScreen";
+import vitimaScreen from "./vitimaScreen"
+import DocumentPicker from "react-native-document-picker";
+
 
 const mockPatients = [
   { id: '1', name: 'João Silva', sex: 'M', birthDate: '1990-01-15', caseId: '1', identified: 'YES' },
@@ -278,14 +284,18 @@ function HomeScreen() {
             ),
           }}
         />
+
+       
+
+
         <Drawer.Screen
-          name="Patients"
-          component={PatientScreen}
+          name="Vítimas"
+          component={vitimaScreen}
           options={{
             headerShown: false,
-            title: 'Pacientes',
+            title: 'Vítimas',
             drawerIcon: ({ color, size }) => (
-              <MaterialIcons name="person" size={size} color={color} />
+              <MaterialIcons name="people" size={size} color={color} />
             ),
           }}
         />
