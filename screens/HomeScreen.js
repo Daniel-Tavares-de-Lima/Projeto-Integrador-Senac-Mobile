@@ -5,9 +5,9 @@ import { Appbar, Button, TextInput, DataTable, Provider as PaperProvider } from 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import styles from '../styles/stylesHome';
-import CasesScreen from "./caseScreen";
+import caseScreen from './caseScreen';
+import PatientScreen from './PatientScreen';
 
-// Mock data (arrays simples)
 const mockPatients = [
   { id: '1', name: 'João Silva', sex: 'M', birthDate: '1990-01-15', caseId: '1', identified: 'YES' },
   { id: '2', name: 'Maria Santos', sex: 'F', birthDate: '1985-03-22', caseId: '2', identified: 'NO' },
@@ -78,14 +78,12 @@ function HomeContent({ navigation }) {
           icon="menu"
           onPress={() => navigation.toggleDrawer()}
         />
-        
         <View style={styles.user}>
           <MaterialIcons name="person" size={30} color="#2d4a78" />
           <Text style={styles.userText}>{userName}</Text>
           <Appbar.Action icon="logout" onPress={handleLogout} color="#2d4a78" />
         </View>
       </Appbar.Header>
-
       <ScrollView style={styles.main}>
         <TextInput
           placeholder="Pesquisar casos ou pacientes"
@@ -97,7 +95,6 @@ function HomeContent({ navigation }) {
         />
         <Text style={styles.title}>Painel Inicial</Text>
         {error && <Text style={styles.error}>{error}</Text>}
-
         <View style={styles.searchSection}>
           <TextInput
             label="Data inicial"
@@ -115,13 +112,10 @@ function HomeContent({ navigation }) {
             mode="outlined"
             placeholder="YYYY-MM-DD"
           />
-          
         </View>
-
-        <Button mode="contained" onPress={() => {}} style={styles.searchButton}>
-            Pesquisar
+        <Button mode="contained" onPress={() => { }} style={styles.searchButton}>
+          Pesquisar
         </Button>
-
         <Text style={styles.sectionTitle}>Casos</Text>
         <ScrollView horizontal>
           <DataTable style={styles.table}>
@@ -137,7 +131,6 @@ function HomeContent({ navigation }) {
               <DataTable.Title style={styles.tableHeader}>Solicitar</DataTable.Title>
               <DataTable.Title style={styles.tableHeader}>Status</DataTable.Title>
             </DataTable.Header>
-
             {cases.length > 0 ? (
               cases.map((caso, index) => (
                 <DataTable.Row key={caso.id || index}>
@@ -169,8 +162,8 @@ function HomeContent({ navigation }) {
                       style={[
                         styles.status,
                         caso.statusCase === 'ABERTO' ? styles.statusAberto :
-                        caso.statusCase === 'FECHADO' ? styles.statusFechado :
-                        styles.statusDefault,
+                          caso.statusCase === 'FECHADO' ? styles.statusFechado :
+                            styles.statusDefault,
                       ]}
                     >
                       {caso.statusCase || '-'}
@@ -185,7 +178,6 @@ function HomeContent({ navigation }) {
             )}
           </DataTable>
         </ScrollView>
-
         <Text style={styles.sectionTitle}>Pacientes</Text>
         <ScrollView horizontal>
           <DataTable style={styles.table}>
@@ -199,7 +191,6 @@ function HomeContent({ navigation }) {
               <DataTable.Title style={styles.tableHeader}>Últimos Exames</DataTable.Title>
               <DataTable.Title style={styles.tableHeader}>Solicitar</DataTable.Title>
             </DataTable.Header>
-
             {patients.length > 0 ? (
               patients.map((patient, index) => (
                 <DataTable.Row key={patient.id || index}>
@@ -216,14 +207,10 @@ function HomeContent({ navigation }) {
                     {patient.birthDate ? new Date(patient.birthDate).toLocaleDateString() : '-'}
                   </DataTable.Cell>
                   <DataTable.Cell style={styles.tableCell}>
-                    {getCaseSolicitante(patient)}
+                    {getCaseSolicitante(patient.caseId)}
                   </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    -
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    -
-                  </DataTable.Cell>
+                  <DataTable.Cell style={styles.tableCell}>-</DataTable.Cell>
+                  <DataTable.Cell style={styles.tableCell}>-</DataTable.Cell>
                   <DataTable.Cell style={styles.tableCell}>
                     <Button mode="contained" style={styles.examButton}>
                       Solicitar Exame
@@ -239,12 +226,11 @@ function HomeContent({ navigation }) {
           </DataTable>
         </ScrollView>
       </ScrollView>
-
       <View style={styles.menuNav}>
         <View style={styles.menuNavi}>
           <MaterialIcons name="home" size={40} color="#2d4a78" />
           <MaterialIcons name="add-circle" size={40} color="#2d4a78" />
-          <MaterialIcons name="search" size={40} color="#2d4f4f4" />
+          <MaterialIcons name="search" size={40} color="#2d4a78" />
         </View>
       </View>
     </View>
@@ -266,25 +252,24 @@ function HomeScreen() {
             fontSize: 20,
             marginLeft: 5,
           },
-          drawerActiveTintColor: '#f4f4f4f4',
+          drawerActiveTintColor: '#f4f4f4',
           drawerInactiveTintColor: '#fff',
-          }}
+        }}
       >
         <Drawer.Screen
           name="HomeContent"
           component={HomeContent}
           options={{
             headerShown: false,
-            title: ' Laudos Periciais Periciais Odonto-Legal',
+            title: 'Laudos Periciais Odonto-Legal',
             drawerIcon: ({ color, size }) => (
               <MaterialIcons name="home" size={size} color={color} />
             ),
-           }}
-          />
-
-          <Drawer.Screen
+          }}
+        />
+        <Drawer.Screen
           name="Cases"
-          component={CasesScreen}
+          component={caseScreen}
           options={{
             headerShown: false,
             title: 'Casos',
@@ -293,9 +278,20 @@ function HomeScreen() {
             ),
           }}
         />
+        <Drawer.Screen
+          name="Patients"
+          component={PatientScreen}
+          options={{
+            headerShown: false,
+            title: 'Pacientes',
+            drawerIcon: ({ color, size }) => (
+              <MaterialIcons name="person" size={size} color={color} />
+            ),
+          }}
+        />
       </Drawer.Navigator>
-      </PaperProvider>
-    );
+    </PaperProvider>
+  );
 }
 
 export default HomeScreen;
