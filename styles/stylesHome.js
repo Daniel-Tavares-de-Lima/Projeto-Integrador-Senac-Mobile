@@ -1,135 +1,132 @@
+
+
+
 import { StyleSheet } from 'react-native';
 
-const styles = StyleSheet.create({
+export default StyleSheet.create({
+  // Layout principal
   container: {
     flex: 1,
-    backgroundColor: '#f4f4f4f4',
+    backgroundColor: '#f5f5f5',
   },
+
+  // Cabeçalho
   header: {
-    backgroundColor: '#f4f4f4f4f4',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  logoApp: {
-    fontSize: 20,
-    color: '#2d4a78',
-    fontWeight: 'bold',
-  },
-  logoSpan: {
-    color: '#31a248',
-  },
-  searchInput: {
-    width: 320,
-    height: 40,
-    backgroundColor: '#fff',
-    borderRadius: 5,
-  },
-  user: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: '10',
-  },
-  userText: {
-    color: '#2d4a78',
-    fontSize: 20,
-    marginLeft: 5,
-    marginRight: 10,
-  },
-  main: {
+    marginTop:40,
     padding: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: '20',
-    marginTop: 10,
-  },
-  error: {
-    color: 'red',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  searchSection: {
-    flexDirection: 'row',
+    // backgroundColor: '#eff6ff',
+     backgroundColor: '#f5f5f5',
     alignItems: 'center',
-    marginBottom: 10,
+    justifyContent: 'center',
+    flexDirection: "row"
   },
-  dateInput: {
-    width: 180,
-    marginRight: 10,
+
+   controle:{
+    flexDirection: "row",
+    backgroundColor: "#f4f5c5"
   },
-  searchButton: {
-    backgroundColor: '#31a248',
-    borderRadius: 5,
-    width: 120,
-    marginTop: 10,
-    width: 370
+
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#1F2937',
   },
-  content: {
-    flexDirection: 'row',
-    marginBottom: 20,
+  subtitle: {
+    fontSize: 14,
+    color: '#6B7280',
   },
-  actionButton: {
-    backgroundColor: '#31a248',
-    marginRight: 10,
-    borderRadius: 5,
+
+  // Seções
+  section: {
+    padding: 20,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    marginVertical: 10,
+    marginBottom: 10,
+    color: '#111827',
   },
-  table: {
-    backgroundColor: '#fff',
-    borderRadius: 5,
-    marginBottom: 20,
-  },
-  tableHeader: {
-    minWidth: 100,
-    justifyContent: 'center',
-  },
-  tableCell: {
-    minWidth: 100,
-    justifyContent: 'center',
-  },
-  examButton: {
-    backgroundColor: '#31a248',
-    borderRadius: 5,
-  },
-  status: {
-    fontWeight: 'bold',
-  },
-  statusAberto: {
-    color: '#31a248',
-  },
-  statusFechado: {
-    color: '#dc3545',
-  },
-  statusDefault: {
-    color: '#6c757d',
-  },
-  loading: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: '25',
-    marginTop: 20,
-  },
-  menuNav: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  menuNavi: {
-    backgroundColor: '#fff',
-    width: '280',
-    height: '60',
+
+  // Ações rápidas
+  quickActionsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    borderRadius: 15,
-    marginBottom: 40,
-    marginTop: 5,
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
+  quickAction: {
+    width: '48%',
+    padding: 16,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  actionTitle: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginTop: 8,
+  },
+  actionDescription: {
+    color: 'white',
+    fontSize: 12,
+  },
+
+  // Cartões de estatísticas
+  statsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statCard: {
+    flex: 1,
+    margin: 4,
+    padding: 16,
+    alignItems: 'center',
+  },
+  statText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#1D4ED8',
+  },
+
+  // Notificações
+  notificationCard: {
+    marginBottom: 10,
+    borderLeftWidth: 4,
+  },
+  notificationContent: {
+    padding: 12,
+  },
+  notificationMessage: {
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  notificationTime: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+
+  // Itens recentes
+  recentCard: {
+    padding: 12,
+  },
+  recentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 4,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  recentText: {
+    fontSize: 14,
+    color: '#374151',
+  },
+
+  //-- Itens Variados
+  sectionContainer:{
+    margin: 20
+  }
 });
 
-export default styles;

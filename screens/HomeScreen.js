@@ -1,307 +1,175 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Text } from 'react-native';
-import { createDrawerNavigator } from '@react-navigation/drawer';
-import { Appbar, Button, TextInput, DataTable, Provider as PaperProvider } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { Card, Appbar } from 'react-native-paper';
 import styles from '../styles/stylesHome';
+import { useNavigation } from '@react-navigation/native';
 
-import caseScreen from './caseScreen';
-import PatientScreen from './PatientScreen';
-
-import CasesScreen from "./caseScreen";
-import vitimaScreen from "./vitimaScreen"
-import DocumentPicker from "react-native-document-picker";
-
-
-const mockPatients = [
-  { id: '1', name: 'João Silva', sex: 'M', birthDate: '1990-01-15', caseId: '1', identified: 'YES' },
-  { id: '2', name: 'Maria Santos', sex: 'F', birthDate: '1985-03-22', caseId: '2', identified: 'NO' },
-];
-
-const mockCases = [
-  { id: '1', title: 'Caso 001', classification: 'Pericial', dateOpened: '2025-01-10', solicitante: 'Dr. Pedro', managerId: 'M001', statusCase: 'ABERTO' },
-  { id: '2', title: 'Caso 002', classification: 'Odontológico', dateOpened: '2025-02-20', solicitante: 'Dra. Ana', managerId: 'M002', statusCase: 'FECHADO' },
-];
-
-const Drawer = createDrawerNavigator();
-
-function HomeContent({ navigation }) {
-  const [userName, setUserName] = useState('Usuário');
-  const [patients, setPatients] = useState(mockPatients);
-  const [cases, setCases] = useState(mockCases);
-  const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  const getErrorMessage = (error) => {
-    return error instanceof Error ? error.message : 'Erro desconhecido';
-  };
+const Home = () => {
+  const [greeting, setGreeting] = useState('');
+  const [doctorName] = useState('Dr. Daniel');
+  const navigation = useNavigation();
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const userInfo = await AsyncStorage.getItem('userInfo');
-        setUserName(JSON.parse(userInfo)?.name || 'Julia');
-        setPatients(mockPatients);
-        setCases(mockCases);
-        setError(null);
-      } catch (error) {
-        setError(getErrorMessage(error));
-        setPatients([]);
-        setCases([]);
-      } finally {
-        setIsLoading(false);
+    const updateGreeting = () => {
+      const hour = new Date().getHours();
+      if (hour >= 5 && hour < 12) {
+        setGreeting('Bom dia');
+      } else if (hour >= 12 && hour < 18) {
+        setGreeting('Boa tarde');
+      } else {
+        setGreeting('Boa noite');
       }
     };
 
-    fetchData();
+    updateGreeting();
+    const interval = setInterval(updateGreeting, 60000);
+    return () => clearInterval(interval);
   }, []);
 
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('userInfo');
-    console.log('Logout realizado (navegação desativada)');
-  };
+  const quickActions = [
+    {
+      title: 'Vítima',
+      icon: 'user-plus',
+      color: '#3B82F6',
+      description: 'Adicionar vítimas',
+      onPress: () => navigation.navigate('Victims'),
+    },
+    {
+      title: 'Casos',
+      icon: 'folder',
+      color: '#10B981',
+      description: 'Visualizar casos',
+      onPress: () => navigation.navigate('Cases'),
+    },
+    {
+      title: 'Evidências',
+      icon: 'camera',
+      color: '#8B5CF6',
+      description: 'Capturar fotos',
+      onPress: () => navigation.navigate('Evidencia'),
+    },
+    {
+      title: 'Laudos',
+      icon: 'file-text',
+      color: '#F97316',
+      description: 'Gerar relatórios',
+      onPress: () => {}, // Você pode definir a ação aqui depois
+    },
+  ];
 
-  const getCaseSolicitante = (caseId) => {
-    const caso = cases.find((c) => c && c.id === caseId);
-    return caso ? caso.solicitante || '-' : '-';
-  };
+  const notifications = [
+    { id: 1, type: 'pending', message: '3 laudos pendentes de revisão', priority: 'high' },
+    { id: 2, type: 'alert', message: 'Caso #2024-001 aguarda documentação', priority: 'medium' },
+    { id: 3, type: 'info', message: 'Backup automático realizado', priority: 'low' },
+  ];
 
-  if (isLoading) {
-    return <Text style={styles.loading}>Carregando...</Text>;
-  }
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'high':
+        return '#F87171';
+      case 'medium':
+        return '#FACC15';
+      case 'low':
+        return '#34D399';
+      default:
+        return '#D1D5DB';
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      <Appbar.Header style={styles.header}>
-        <Appbar.Action
-          color="#2d4a78"
-          size={30}
-          icon="menu"
-          onPress={() => navigation.toggleDrawer()}
-        />
-        <View style={styles.user}>
-          <MaterialIcons name="person" size={30} color="#2d4a78" />
-          <Text style={styles.userText}>{userName}</Text>
-          <Appbar.Action icon="logout" onPress={handleLogout} color="#2d4a78" />
-        </View>
-      </Appbar.Header>
-      <ScrollView style={styles.main}>
-        <TextInput
-          placeholder="Pesquisar casos ou pacientes"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          style={styles.searchInput}
-          mode="outlined"
-          dense
-        />
-        <Text style={styles.title}>Painel Inicial</Text>
-        {error && <Text style={styles.error}>{error}</Text>}
-        <View style={styles.searchSection}>
-          <TextInput
-            label="Data inicial"
-            value={startDate}
-            onChangeText={setStartDate}
-            style={styles.dateInput}
-            mode="outlined"
-            placeholder="YYYY-MM-DD"
-          />
-          <TextInput
-            label="Data final"
-            value={endDate}
-            onChangeText={setEndDate}
-            style={styles.dateInput}
-            mode="outlined"
-            placeholder="YYYY-MM-DD"
-          />
-        </View>
-        <Button mode="contained" onPress={() => { }} style={styles.searchButton}>
-          Pesquisar
-        </Button>
-        <Text style={styles.sectionTitle}>Casos</Text>
-        <ScrollView horizontal>
-          <DataTable style={styles.table}>
-            <DataTable.Header>
-              <DataTable.Title style={styles.tableHeader}>Código</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Tipo</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Data do Fato</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Local</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Solicitante</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Responsável</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Data do Exame</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Últimos Exames</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Solicitar</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Status</DataTable.Title>
-            </DataTable.Header>
-            {cases.length > 0 ? (
-              cases.map((caso, index) => (
-                <DataTable.Row key={caso.id || index}>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {caso.id ? caso.id.slice(0, 4) : '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {caso.classification || '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {caso.dateOpened ? new Date(caso.dateOpened).toLocaleDateString() : '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>-</DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {caso.solicitante || '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {caso.managerId || '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>-</DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>-</DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    <Button mode="contained" style={styles.examButton}>
-                      Solicitar Exame
-                    </Button>
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    <Text
-                      style={[
-                        styles.status,
-                        caso.statusCase === 'ABERTO' ? styles.statusAberto :
-                          caso.statusCase === 'FECHADO' ? styles.statusFechado :
-                            styles.statusDefault,
-                      ]}
-                    >
-                      {caso.statusCase || '-'}
-                    </Text>
-                  </DataTable.Cell>
-                </DataTable.Row>
-              ))
-            ) : (
-              <DataTable.Row>
-                <DataTable.Cell colSpan={10}>Nenhum caso disponível</DataTable.Cell>
-              </DataTable.Row>
-            )}
-          </DataTable>
-        </ScrollView>
-        <Text style={styles.sectionTitle}>Pacientes</Text>
-        <ScrollView horizontal>
-          <DataTable style={styles.table}>
-            <DataTable.Header>
-              <DataTable.Title style={styles.tableHeader}>Código</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Nome</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Sexo</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Data de Nascimento</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Solicitante</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Data do Exame</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Últimos Exames</DataTable.Title>
-              <DataTable.Title style={styles.tableHeader}>Solicitar</DataTable.Title>
-            </DataTable.Header>
-            {patients.length > 0 ? (
-              patients.map((patient, index) => (
-                <DataTable.Row key={patient.id || index}>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {patient.id ? patient.id.slice(0, 4) : '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {patient.name || '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {patient.sex || '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {patient.birthDate ? new Date(patient.birthDate).toLocaleDateString() : '-'}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    {getCaseSolicitante(patient.caseId)}
-                  </DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>-</DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>-</DataTable.Cell>
-                  <DataTable.Cell style={styles.tableCell}>
-                    <Button mode="contained" style={styles.examButton}>
-                      Solicitar Exame
-                    </Button>
-                  </DataTable.Cell>
-                </DataTable.Row>
-              ))
-            ) : (
-              <DataTable.Row>
-                <DataTable.Cell colSpan={8}>Nenhum paciente disponível</DataTable.Cell>
-              </DataTable.Row>
-            )}
-          </DataTable>
-        </ScrollView>
-      </ScrollView>
-      <View style={styles.menuNav}>
-        <View style={styles.menuNavi}>
-          <MaterialIcons name="home" size={40} color="#2d4a78" />
-          <MaterialIcons name="add-circle" size={40} color="#2d4a78" />
-          <MaterialIcons name="search" size={40} color="#2d4a78" />
+    <ScrollView style={styles.container}>
+
+      
+      <View style={styles.header}>
+
+        <View> 
+
+          <Text style={styles.title}>{greeting}, {doctorName}!</Text>
+        <Text style={styles.subtitle}>
+          {new Date().toLocaleDateString('pt-BR', {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+          })}
+        </Text>
         </View>
       </View>
-    </View>
+
+      <View styles={styles.controle}>
+        <Appbar.Action color="#2d4a78" size={35} icon="menu" onPress={() => navigation.toggleDrawer()} style={styles.menu}/>
+        
+        <Appbar.Action icon="logout" color="#2d4a78" onPress={async () => {
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('userInfo');
+            navigation.replace('Login');
+          }}
+        />
+
+        {/* <Appbar.Action icon="logout" color="#2d4a78" size={30} onPress={async () => {
+            await AsyncStorage.removeItem('token');
+            await AsyncStorage.removeItem('userInfo');
+            navigation.replace('Login')}}/> */}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Acesso Rápido</Text>
+        <View style={styles.quickActionsContainer}>
+          {quickActions.map((action, index) => (
+            <TouchableOpacity
+              key={index}
+              style={[styles.quickAction, { backgroundColor: action.color }]}
+              onPress={action.onPress}
+            >
+              <Feather name={action.icon} size={24} color="white" />
+              <Text style={styles.actionTitle}>{action.title}</Text>
+              <Text style={styles.actionDescription}>{action.description}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Resumo do Dia</Text>
+        <View style={styles.statsContainer}>
+          <Card style={styles.statCard}><Text style={styles.statText}>12 Casos Andamento</Text></Card>
+          <Card style={styles.statCard}><Text style={styles.statText}>8 Finalizados</Text></Card>
+          <Card style={styles.statCard}><Text style={styles.statText}>3 Pendentes</Text></Card>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Notificações</Text>
+        {notifications.map((n) => (
+          <Card
+            key={n.id}
+            style={[styles.notificationCard, { borderLeftColor: getPriorityColor(n.priority) }]}
+          >
+            <View style={styles.notificationContent}>
+              <Text style={styles.notificationMessage}>{n.message}</Text>
+              <Text style={styles.notificationTime}>Há 2 horas</Text>
+            </View>
+          </Card>
+        ))}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Atividade Recente</Text>
+        <Card style={styles.recentCard}>
+          <View style={styles.recentItem}>
+            <View style={[styles.dot, { backgroundColor: '#34D399' }]} />
+            <Text style={styles.recentText}>Laudo #2024-015 finalizado - 14:30</Text>
+          </View>
+          <View style={styles.recentItem}>
+            <View style={[styles.dot, { backgroundColor: '#3B82F6' }]} />
+            <Text style={styles.recentText}>Nova evidência ao caso #2024-014 - 13:45</Text>
+          </View>
+          <View style={styles.recentItem}>
+            <View style={[styles.dot, { backgroundColor: '#F97316' }]} />
+            <Text style={styles.recentText}>Caso #2024-013 iniciado - 12:20</Text>
+          </View>
+        </Card>
+      </View>
+    </ScrollView>
   );
-}
+};
 
-function HomeScreen() {
-  return (
-    <PaperProvider>
-      <Drawer.Navigator
-        initialRouteName="HomeContent"
-        screenOptions={{
-          drawerStyle: {
-            backgroundColor: '#2d4a78',
-            width: 300,
-          },
-          drawerLabelStyle: {
-            color: '#fff',
-            fontSize: 20,
-            marginLeft: 5,
-          },
-          drawerActiveTintColor: '#f4f4f4',
-          drawerInactiveTintColor: '#fff',
-        }}
-      >
-        <Drawer.Screen
-          name="HomeContent"
-          component={HomeContent}
-          options={{
-            headerShown: false,
-            title: 'Laudos Periciais Odonto-Legal',
-            drawerIcon: ({ color, size }) => (
-              <MaterialIcons name="home" size={size} color={color} />
-            ),
-          }}
-        />
-        <Drawer.Screen
-          name="Cases"
-          component={caseScreen}
-          options={{
-            headerShown: false,
-            title: 'Casos',
-            drawerIcon: ({ color, size }) => (
-              <MaterialIcons name="assignment" size={size} color={color} />
-            ),
-          }}
-        />
-
-       
-
-
-        <Drawer.Screen
-          name="Vítimas"
-          component={vitimaScreen}
-          options={{
-            headerShown: false,
-            title: 'Vítimas',
-            drawerIcon: ({ color, size }) => (
-              <MaterialIcons name="people" size={size} color={color} />
-            ),
-          }}
-        />
-      </Drawer.Navigator>
-    </PaperProvider>
-  );
-}
-
-export default HomeScreen;
+export default Home;

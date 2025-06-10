@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "plantation-app",
-    "slug": "plantation-app",
+    "name": "Laudo-Odonto-app",
+    "slug": "Laudo-Odonto-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -13,17 +13,49 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.plantationapp",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Este aplicativo precisa acessar sua câmera para capturar imagens de evidências.",
+        "NSLocationWhenInUseUsageDescription": "Este aplicativo precisa acessar sua localização para registrar a geolocalização das evidências."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.anonymous.plantationapp",
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-document-picker",
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Permitir que o aplicativo acesse a câmera para capturar imagens."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Permitir que o aplicativo acesse a localização para registrar geolocalização."
+        }
+      ]
+    ],
+    "sdkVersion": "53.0.0"
   }
 }

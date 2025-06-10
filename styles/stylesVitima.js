@@ -6,14 +6,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#fff',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+
   user: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginRight: 20
+  },
+
+  title:{
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 20
   },
   userText: {
     fontSize: 16,
@@ -55,6 +63,13 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
   },
+
+  inputPesquisar:{
+    width: 370,
+    margin: 20,
+    height: 40
+  },
+
   textInput: {
     backgroundColor: '#fff',
     fontSize: 14,

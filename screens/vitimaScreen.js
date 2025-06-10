@@ -6,7 +6,8 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import styles from "../styles/stylesHome";
 import stylesCases from "../styles/stylesCases";
 import stylesVictims from "../styles/stylesVitima";
-import DocumentPicker from "react-native-document-picker";
+// import DocumentPicker from "react-native-document-picker";
+import * as DocumentPicker from 'expo-document-picker';
 
 const mockVictims = [
   {
@@ -39,6 +40,7 @@ const mockVictims = [
 
 function VictimsScreen({ navigation }) {
   const [nic, setNic] = useState("");
+  const [Pesquisar, setPesquisar] = useState("");
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
   const [document, setDocument] = useState("");
@@ -54,12 +56,26 @@ function VictimsScreen({ navigation }) {
   const [arquivo, setArquivo] = useState(null);
 
 
+//   const handleEscolherArquivo = async () => {
+//     const result = await DocumentPicker.getDocumentAsync({});
+//     if (!result.canceled) {
+//       setArquivo(result.assets[0]);
+//     }
+//   };
+
+
   const handleEscolherArquivo = async () => {
-    const result = await DocumentPicker.getDocumentAsync({});
-    if (!result.canceled) {
-      setArquivo(result.assets[0]);
+  try {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: '*/*', // Ou especifique tipos, como 'application/pdf'
+    });
+    if (result.type === 'success') {
+      console.log(result.uri, result.name, result.size);
     }
-  };
+  } catch (err) {
+    console.error('Erro ao selecionar documento:', err);
+  }
+};
 
   const handleSaveVictim = () => {
     if (!nic || !name || !gender || !age || !document || !address || !ethnicity) {
@@ -181,22 +197,26 @@ function VictimsScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <Appbar.Header style={styles.header}>
+      <Appbar.Header style={stylesVictims.header}>
         <Appbar.Action
           color="#2d4a78"
-          size={30}
+          size={35}
           icon="menu"
           onPress={() => navigation.toggleDrawer()}
         />
-        <View style={styles.user}>
-          <MaterialIcons name="person" size={30} color="#2d4a78" />
+        <View style={stylesVictims.user}>
+          <MaterialIcons name="person" size={35} color="#2d4a78" />
           <Text style={styles.userText}>Daniel</Text>
         </View>
       </Appbar.Header>
 
       <ScrollView style={styles.main}>
-        <Text style={styles.title}>Cadastrar Vítimas</Text>
+
+        <TextInput label="Pesquisar casos ou pacientes" value={Pesquisar} onChangeText={setPesquisar} mode="outlined"style={stylesVictims.inputPesquisar}/>
+        
         <View style={stylesCases.CadastrarCasos}>
+
+            <Text style={stylesVictims.title}>Cadastrar Vítimas</Text>
           <TextInput
             label="NIC*"
             value={nic}
@@ -349,8 +369,8 @@ function VictimsScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      <View style={styles.menuNav}>
-        <View style={styles.menuNavi}>
+      <View style={stylesCases.menuNav}>
+        <View style={stylesCases.menuNavi}>
           <MaterialIcons name="home" size={40} color="#2d4a78" />
           <MaterialIcons name="add-circle" size={40} color="#2d4a78" />
           <MaterialIcons name="search" size={40} color="#2d4a78" />

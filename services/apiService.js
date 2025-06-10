@@ -1,4 +1,3 @@
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const API_URL = 'https://pi3p.onrender.com';
@@ -40,11 +39,3 @@ export async function apiRequest(endpoint, method = 'GET', body = null, requires
     throw error;
   }
 }
-
-export const fetchPatients = async () => {
-  return await apiRequest('/patients', 'GET', null, true);
-};
-
-export const fetchCases = async () => {
-  return await apiRequest('/cases', 'GET', null, true);
-};

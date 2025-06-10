@@ -1,4 +1,3 @@
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export async function login(email, password) {
@@ -19,11 +18,41 @@ export async function login(email, password) {
 
     // Armazena o token e informações do usuário no AsyncStorage
     await AsyncStorage.setItem('token', data.accessToken);
-    await AsyncStorage.setItem('userInfo', JSON.stringify({ name: data.name || 'Usuário' }));
+    await AsyncStorage.setItem('userInfo', JSON.stringify({ name: data.name || 'Usuário', role: data.role || 'USER' }));
 
     return data;
   } catch (error) {
     console.error('Erro em login:', error.message);
     throw new Error(error.message || 'Erro ao conectar com o servidor');
+  }
+}
+
+export async function logout() {
+  try {
+    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('userInfo');
+  } catch (error) {
+    console.error('Erro ao fazer logout:', error.message);
+    throw new Error('Erro ao fazer logout');
+  }
+}
+
+export async function getToken() {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    return token;
+  } catch (error) {
+    console.error('Erro ao obter token:', error.message);
+    return null;
+  }
+}
+
+export async function getUserInfo() {
+  try {
+    const userInfo = await AsyncStorage.getItem('userInfo');
+    return userInfo ? JSON.parse(userInfo) : null;
+  } catch (error) {
+    console.error('Erro ao obter userInfo:', error.message);
+    return null;
   }
 }
