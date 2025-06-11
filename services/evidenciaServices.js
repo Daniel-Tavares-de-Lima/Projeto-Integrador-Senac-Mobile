@@ -38,7 +38,6 @@ export async function fetchEvidences() {
   }
 }
 
-
 export async function createEvidence(
   type,
   dateCollection,
