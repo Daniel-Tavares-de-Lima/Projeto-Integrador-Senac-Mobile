@@ -160,7 +160,7 @@ export async function generateEvidenceReport(evidence, caseInfo) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }], body }],
+          contents: [{ parts: [{ text: prompt }] }], 
         }),
       }
     );
