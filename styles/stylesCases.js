@@ -50,15 +50,15 @@ const stylesCases = StyleSheet.create({
   },
   botaoAdicionar: {
     marginVertical: 12,
-    backgroundColor: '#3ba44c', // Verde para "Adicionar"
+    backgroundColor: '#3ba44c', 
   },
   botaoSalvar: {
     marginVertical: 12,
-    backgroundColor: '#26a69a', // Teal para "Salvar"
+    backgroundColor: '#26a69a', 
   },
   botaoCancelar: {
     marginVertical: 12,
-    borderColor: '#F44336', // Vermelho para "Cancelar"
+    borderColor: '#F44336', 
   },
   selectedVictimsContainer: {
     marginVertical: 12,
@@ -84,22 +84,43 @@ const stylesCases = StyleSheet.create({
     marginBottom: 8,
   },
 
-  menuNav:{
-    backgroundColor: '#fff',
-    height: 100,
-    justifyContent: 'center',
-    alignItems: "center"
-  },
+  menuNav: {
+  backgroundColor: '#fff',
+  height: 90,
+  justifyContent: 'center',
+  alignItems: 'center',
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.1,
+  shadowRadius: 6,
+  elevation: 5,
+},
 
-  menuNavi:{
-    flexDirection: 'row',
-    height: 80,
-    backgroundColor: '#f5f5f5',
-    width: 250,
-    borderRadius: 25,
-    justifyContent: 'space-around',
-    alignItems: 'center'
-  }
+menuNavi: {
+  flexDirection: 'row',
+  backgroundColor: '#fff',
+  width: 220,
+  height: 60,
+  borderRadius: 30,
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  paddingHorizontal: 25,
+},
+
+addButtonWrapper: {
+  width: 55,
+  height: 55,
+  borderRadius: 30,
+  backgroundColor: '#3A5BA0',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginTop: -20, // para dar o destaque elevado
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.2,
+  shadowRadius: 3,
+  elevation: 4,
+},
 });
 
 export default stylesCases;

@@ -565,11 +565,16 @@ function VictimsScreen({ navigation }) {
 
       <View style={stylesCases.menuNav}>
         <View style={stylesCases.menuNavi}>
-          <MaterialIcons name='home' size={40} color='#2d4a78' />
-          <MaterialIcons name='add-circle' size={40} color='#4CAF50' />
-          <MaterialIcons name='search' size={40} color='#2d4a78' />
+          <MaterialIcons name="home" size={28} color="#3A5BA0" />
+
+          <View style={stylesCases.addButtonWrapper}>
+            <MaterialIcons name="add" size={28} color="#fff" />
+          </View>
+
+          <MaterialIcons name="search" size={28} color="#3A5BA0" />
         </View>
       </View>
+      
     </View>
   );
 }

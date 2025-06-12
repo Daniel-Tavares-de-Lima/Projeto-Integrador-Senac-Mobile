@@ -1,13 +1,10 @@
 
 
-
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // export async function fetchEvidences(token) {
 //   try {
-//     if (!token) {
-//       throw new Error('Usuário não autenticado.');
-//     }
+//     if (!token) throw new Error('Usuário não autenticado.');
 
 //     const response = await fetch('https://pi3p.onrender.com/evidences', {
 //       method: 'GET',
@@ -18,19 +15,17 @@
 //     });
 
 //     const data = await response.json();
-//     if (!response.ok) {
-//       throw new Error(data.message || 'Erro ao buscar evidências');
-//     }
+//     if (!response.ok) throw new Error(data.message || 'Erro ao buscar evidências');
 
 //     return data.map((item) => ({
 //       id: item.id,
-//       type: item.contentType,
+//       type: item.type,
 //       dateCollection: item.dateCollection,
 //       caseId: item.caseId,
 //       status: item.status,
 //       collectedById: item.collectedById,
-//       imageURL: item.imageContent?.imageURL || null,
-//       content: item.textContent || '{}',
+//       imageURL: item.imageURL || null,
+//       content: item.content || '{}',
 //     }));
 //   } catch (error) {
 //     throw new Error(error.message || 'Erro na requisição');
@@ -42,16 +37,14 @@
 //   type,
 //   dateCollection,
 //   caseId,
-//   imageBase64,
+//   imageBase64, // Ignorado, mas mantido para compatibilidade
 //   latitude,
 //   longitude,
 //   nome,
 //   tipoExames
 // ) {
 //   try {
-//     if (!token) {
-//       throw new Error('Usuário não autenticado.');
-//     }
+//     if (!token) throw new Error('Usuário não autenticado.');
 
 //     const content = JSON.stringify({
 //       latitude: latitude || null,
@@ -61,15 +54,14 @@
 //     });
 
 //     const body = {
-//       contentType: type,
+//       type: 'TEXT', // Sempre TEXT para evitar problemas com imagens
 //       dateCollection,
 //       caseId,
-//       textContent: content,
+//       content,
+//       imageURL: null, // Sem imagem
 //     };
 
-//     if (type === 'image' && imageBase64) {
-//       body.imageContent = { base64: imageBase64 };
-//     }
+//     console.log('Corpo da requisição para createEvidence:', JSON.stringify(body, null, 2));
 
 //     const response = await fetch('https://pi3p.onrender.com/evidences', {
 //       method: 'POST',
@@ -82,20 +74,22 @@
 
 //     const data = await response.json();
 //     if (!response.ok) {
+//       console.error('Erro do backend:', data);
 //       throw new Error(data.message || 'Erro ao criar evidência');
 //     }
 
 //     return {
 //       id: data.id,
-//       type: data.contentType,
+//       type: data.type,
 //       dateCollection: data.dateCollection,
 //       caseId: data.caseId,
 //       status: data.status,
-//       imageURL: data.imageContent?.imageURL || null,
-//       content: data.textContent || '{}',
+//       imageURL: data.imageURL || null,
+//       content: data.content || '{}',
 //     };
 //   } catch (error) {
-//     throw new Error(error.message || 'Erro na requisição');
+//     console.error('Erro em createEvidence:', error);
+//     throw error;
 //   }
 // }
 
@@ -105,16 +99,14 @@
 //   type,
 //   dateCollection,
 //   caseId,
-//   imageBase64,
+//   imageBase64, // Ignorado
 //   latitude,
 //   longitude,
 //   nome,
 //   tipoExames
 // ) {
 //   try {
-//     if (!token) {
-//       throw new Error('Usuário não autenticado.');
-//     }
+//     if (!token) throw new Error('Usuário não autenticado.');
 
 //     const content = JSON.stringify({
 //       latitude: latitude || null,
@@ -124,15 +116,14 @@
 //     });
 
 //     const body = {
-//       contentType: type,
+//       type: 'TEXT',
 //       dateCollection,
 //       caseId,
-//       textContent: content,
+//       content,
+//       imageURL: null,
 //     };
 
-//     if (type === 'image' && imageBase64) {
-//       body.imageContent = { base64: imageBase64 };
-//     }
+//     console.log('Corpo da requisição para updateEvidence:', JSON.stringify(body, null, 2));
 
 //     const response = await fetch(`https://pi3p.onrender.com/evidences/${id}`, {
 //       method: 'PATCH',
@@ -145,20 +136,20 @@
 
 //     const data = await response.json();
 //     if (!response.ok) {
+//       console.error('Erro do backend:', data);
 //       throw new Error(data.message || 'Erro ao atualizar evidência');
 //     }
 
 //     return data;
 //   } catch (error) {
-//     throw new Error(error.message || 'Erro na requisição');
+//     console.error('Erro em updateEvidence:', error);
+//     throw error;
 //   }
 // }
 
 // export async function deleteEvidence(token, id) {
 //   try {
-//     if (!token) {
-//       throw new Error('Usuário não autenticado.');
-//     }
+//     if (!token) throw new Error('Usuário não autenticado.');
 
 //     const response = await fetch(`https://pi3p.onrender.com/evidences/${id}`, {
 //       method: 'DELETE',
@@ -169,9 +160,7 @@
 //     });
 
 //     const data = await response.json();
-//     if (!response.ok) {
-//       throw new Error(data.message || 'Erro ao desativar evidência');
-//     }
+//     if (!response.ok) throw new Error(data.message || 'Erro ao desativar evidência');
 //     return data;
 //   } catch (error) {
 //     throw new Error(error.message || 'Erro na requisição');
@@ -180,9 +169,7 @@
 
 // export async function fetchCases(token) {
 //   try {
-//     if (!token) {
-//       throw new Error('Usuário não autenticado.');
-//     }
+//     if (!token) throw new Error('Usuário não autenticado.');
 //     const response = await fetch('https://pi3p.onrender.com/cases', {
 //       method: 'GET',
 //       headers: {
@@ -191,9 +178,7 @@
 //       },
 //     });
 //     const data = await response.json();
-//     if (!response.ok) {
-//       throw new Error(data.message || 'Erro ao buscar casos');
-//     }
+//     if (!response.ok) throw new Error(data.message || 'Erro ao buscar casos');
 //     return data;
 //   } catch (error) {
 //     throw new Error(error.message || 'Erro na requisição');
@@ -202,11 +187,15 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Função para validar UUID
+function isUUID(str) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return typeof str === 'string' && uuidRegex.test(str);
+}
+
 export async function fetchEvidences(token) {
   try {
-    if (!token) {
-      throw new Error('Usuário não autenticado.');
-    }
+    if (!token) throw new Error('Usuário não autenticado.');
 
     const response = await fetch('https://pi3p.onrender.com/evidences', {
       method: 'GET',
@@ -217,19 +206,17 @@ export async function fetchEvidences(token) {
     });
 
     const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Erro ao buscar evidências');
-    }
+    if (!response.ok) throw new Error(data.message || 'Erro ao buscar evidências');
 
     return data.map((item) => ({
       id: item.id,
-      type: item.type, // Alterado de contentType para type
+      type: item.type,
       dateCollection: item.dateCollection,
       caseId: item.caseId,
       status: item.status,
       collectedById: item.collectedById,
-      imageURL: item.imageEvidence?.imageURL || null,
-      content: item.textEvidence || '{}',
+      imageURL: item.imageURL || null,
+      content: item.content || '{}',
     }));
   } catch (error) {
     throw new Error(error.message || 'Erro na requisição');
@@ -245,30 +232,28 @@ export async function createEvidence(
   latitude,
   longitude,
   nome,
-  tipoExames
+  tipoExames,
+  descriptionVisual
 ) {
   try {
-    if (!token) {
-      throw new Error('Usuário não autenticado.');
-    }
+    if (!token) throw new Error('Usuário não autenticado.');
+    if (!isUUID(caseId)) throw new Error('caseId deve ser um UUID válido.');
 
     const content = JSON.stringify({
       latitude: latitude || null,
       longitude: longitude || null,
       nome: nome || null,
       tipoExames: tipoExames || null,
+      descriptionVisual: descriptionVisual || null,
     });
 
     const body = {
-      type: type.toUpperCase(), // Garante que type seja TEXT ou IMAGE
+      type: 'TEXT',
       dateCollection,
       caseId,
       content,
+      imageURL: null,
     };
-
-    if (type.toUpperCase() === 'IMAGE' && imageBase64) {
-      body.imageEvidence = { base64: imageBase64 }; // Ajustado para imageEvidence
-    }
 
     console.log('Corpo da requisição para createEvidence:', JSON.stringify(body, null, 2));
 
@@ -283,6 +268,7 @@ export async function createEvidence(
 
     const data = await response.json();
     if (!response.ok) {
+      console.error('Erro do backend:', data);
       throw new Error(data.message || 'Erro ao criar evidência');
     }
 
@@ -292,12 +278,12 @@ export async function createEvidence(
       dateCollection: data.dateCollection,
       caseId: data.caseId,
       status: data.status,
-      imageURL: data.imageEvidence?.imageURL || null,
+      imageURL: data.imageURL || null,
       content: data.content || '{}',
     };
   } catch (error) {
     console.error('Erro em createEvidence:', error);
-    throw new Error(error.message || 'Erro na requisição');
+    throw error;
   }
 }
 
@@ -311,30 +297,28 @@ export async function updateEvidence(
   latitude,
   longitude,
   nome,
-  tipoExames
+  tipoExames,
+  descriptionVisual
 ) {
   try {
-    if (!token) {
-      throw new Error('Usuário não autenticado.');
-    }
+    if (!token) throw new Error('Usuário não autenticado.');
+    if (!isUUID(caseId)) throw new Error('caseId deve ser um UUID válido.');
 
     const content = JSON.stringify({
       latitude: latitude || null,
       longitude: longitude || null,
       nome: nome || null,
       tipoExames: tipoExames || null,
+      descriptionVisual: descriptionVisual || null,
     });
 
     const body = {
-      type: type.toUpperCase(), // Garante que type seja TEXT ou IMAGE
+      type: 'TEXT',
       dateCollection,
       caseId,
       content,
+      imageURL: null,
     };
-
-    if (type.toUpperCase() === 'IMAGE' && imageBase64) {
-      body.imageEvidence = { base64: imageBase64 }; // Ajustado para imageEvidence
-    }
 
     console.log('Corpo da requisição para updateEvidence:', JSON.stringify(body, null, 2));
 
@@ -349,21 +333,20 @@ export async function updateEvidence(
 
     const data = await response.json();
     if (!response.ok) {
+      console.error('Erro do backend:', data);
       throw new Error(data.message || 'Erro ao atualizar evidência');
     }
 
     return data;
   } catch (error) {
     console.error('Erro em updateEvidence:', error);
-    throw new Error(error.message || 'Erro na requisição');
+    throw error;
   }
 }
 
 export async function deleteEvidence(token, id) {
   try {
-    if (!token) {
-      throw new Error('Usuário não autenticado.');
-    }
+    if (!token) throw new Error('Usuário não autenticado.');
 
     const response = await fetch(`https://pi3p.onrender.com/evidences/${id}`, {
       method: 'DELETE',
@@ -374,9 +357,7 @@ export async function deleteEvidence(token, id) {
     });
 
     const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Erro ao desativar evidência');
-    }
+    if (!response.ok) throw new Error(data.message || 'Erro ao desativar evidência');
     return data;
   } catch (error) {
     throw new Error(error.message || 'Erro na requisição');
@@ -385,9 +366,7 @@ export async function deleteEvidence(token, id) {
 
 export async function fetchCases(token) {
   try {
-    if (!token) {
-      throw new Error('Usuário não autenticado.');
-    }
+    if (!token) throw new Error('Usuário não autenticado.');
     const response = await fetch('https://pi3p.onrender.com/cases', {
       method: 'GET',
       headers: {
@@ -396,9 +375,7 @@ export async function fetchCases(token) {
       },
     });
     const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'Erro ao buscar casos');
-    }
+    if (!response.ok) throw new Error(data.message || 'Erro ao buscar casos');
     return data;
   } catch (error) {
     throw new Error(error.message || 'Erro na requisição');

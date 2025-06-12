@@ -13,6 +13,8 @@ import HomeScreen from './screens/HomeScreen';
 import VictimsScreen from './screens/vitimaScreen';
 import CasesScreen from './screens/caseScreen';
 import EvidenciaScreen from './screens/EvidenciaScreen';
+import DashboardScreen from './screens/dashboardScreen';
+import ProfessionalScreen from './screens/ProfissionalScreen';
 
 const Stack = createStackNavigator();
 const Drawer = createDrawerNavigator();
@@ -86,11 +88,34 @@ function DrawerNavigator() {
           ),
         }}
       />
+
+      <Drawer.Screen
+        name="Profissionais"
+        component={ProfessionalScreen}
+        options={{
+          title: 'Profissionais',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="file-document-outline" color={color} size={size} />
+          ),
+        }}
+      />
+
       <Drawer.Screen
         name="Evidencia"
         component={EvidenciaScreen}
         options={{
           title: 'Evidência',
+          drawerIcon: ({ color, size }) => (
+            <Icon name="image-multiple-outline" color={color} size={size} />
+          ),
+        }}
+      />
+
+      <Drawer.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{
+          title: 'Dashboard',
           drawerIcon: ({ color, size }) => (
             <Icon name="image-multiple-outline" color={color} size={size} />
           ),

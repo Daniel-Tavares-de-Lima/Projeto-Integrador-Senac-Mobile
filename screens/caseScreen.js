@@ -108,77 +108,68 @@ function CasesScreen({ navigation }) {
     [getErrorMessage]
   );
 
-  const handleGenerateReport = useCallback(
-    async () => {
-      if (!selectedCase) return;
-      setIsGeneratingReport(true);
-      setReportError(null);
-      try {
-        console.log("Gerando relatório para caso ID:", selectedCase.id);
-        const victimDetails = victims.filter(
-          (v) =>
-            selectedCase.vitimas?.includes(v.id) || v.caseId === selectedCase.id
-        );
-        const report = await generateReport(selectedCase, victimDetails, peritos);
-        setReportTitle(report.title);
-        setReportContent(report.content);
-        setReportModalVisible(true);
-        console.log("Relatório gerado:", {
-          title: report.title,
-          content: report.content,
-        });
-      } catch (error) {
-        const errorMessage = getErrorMessage(error);
-        setReportError(errorMessage);
-        Alert.alert("Erro", errorMessage);
-        console.error("Erro ao gerar relatório:", errorMessage, error);
-      } finally {
-        setIsGeneratingReport(false);
-      }
-    },
-    [selectedCase, victims, peritos, getErrorMessage]
-  );
+  const handleGenerateReport = useCallback(async () => {
+    if (!selectedCase) return;
+    setIsGeneratingReport(true);
+    setReportError(null);
+    try {
+      console.log("Gerando relatório para caso ID:", selectedCase.id);
+      const victimDetails = victims.filter(
+        (v) =>
+          selectedCase.vitimas?.includes(v.id) || v.caseId === selectedCase.id
+      );
+      const report = await generateReport(selectedCase, victimDetails, peritos);
+      setReportTitle(report.title);
+      setReportContent(report.content);
+      setReportModalVisible(true);
+      console.log("Relatório gerado:", {
+        title: report.title,
+        content: report.content,
+      });
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      setReportError(errorMessage);
+      Alert.alert("Erro", errorMessage);
+      console.error("Erro ao gerar relatório:", errorMessage, error);
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  }, [selectedCase, victims, peritos, getErrorMessage]);
 
-  const handleSaveReport = useCallback(
-    async () => {
-      if (!selectedCase || !reportTitle || !reportContent) {
-        Alert.alert("Erro", "Título ou conteúdo do relatório inválido.");
-        return;
-      }
-      try {
-        console.log("Salvando relatório para caseId:", selectedCase.id);
-        const reportDto = {
-          title: reportTitle,
-          content: reportContent,
-          caseId: selectedCase.id,
-        };
-        await apiRequest("/reports", "POST", reportDto, true);
-        Alert.alert("Sucesso", "Relatório salvo com sucesso!");
-        setReportModalVisible(false);
-        fetchReports(selectedCase.id);
-      } catch (error) {
-        const errorMessage = getErrorMessage(error);
-        setReportError(errorMessage);
-        Alert.alert("Erro", errorMessage);
-        console.error("Erro ao salvar relatório:", errorMessage, error);
-      }
-    },
-    [selectedCase, reportTitle, reportContent, getErrorMessage, fetchReports]
-  );
+  const handleSaveReport = useCallback(async () => {
+    if (!selectedCase || !reportTitle || !reportContent) {
+      Alert.alert("Erro", "Título ou conteúdo do relatório inválido.");
+      return;
+    }
+    try {
+      console.log("Salvando relatório para caseId:", selectedCase.id);
+      const reportDto = {
+        title: reportTitle,
+        content: reportContent,
+        caseId: selectedCase.id,
+      };
+      await apiRequest("/reports", "POST", reportDto, true);
+      Alert.alert("Sucesso", "Relatório salvo com sucesso!");
+      setReportModalVisible(false);
+      fetchReports(selectedCase.id);
+    } catch (error) {
+      const errorMessage = getErrorMessage(error);
+      setReportError(errorMessage);
+      Alert.alert("Erro", errorMessage);
+      console.error("Erro ao salvar relatório:", errorMessage, error);
+    }
+  }, [selectedCase, reportTitle, reportContent, getErrorMessage, fetchReports]);
 
   const handleCopyReport = useCallback(() => {
     Clipboard.setString(reportContent);
     Alert.alert("Sucesso", "Relatório copiado para a área de transferência!");
   }, [reportContent]);
 
-  const handleViewReport = useCallback(
-    (report) => {
-      setReportTitle(report.title);
-      setReportContent(report.content);
-      setReportModalVisible(true);
-    },
-    []
-  );
+  const handleViewReport = useCallback((report) => {
+    setReportTitle(report.title);
+    setReportContent(report.content);
+    setReportModalVisible(true);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -355,7 +346,10 @@ function CasesScreen({ navigation }) {
     }
     try {
       const vitimas = selectedVictims.map((v) => v.id);
-      console.log("Salvando caso com vítimas:", JSON.stringify(vitimas, null, 2));
+      console.log(
+        "Salvando caso com vítimas:",
+        JSON.stringify(vitimas, null, 2)
+      );
       let caseId;
       if (editCaseId) {
         await updateCase(
@@ -458,7 +452,10 @@ function CasesScreen({ navigation }) {
 
   const handleEditCase = useCallback(
     (caseItem) => {
-      console.log("Iniciando edição do caso:", JSON.stringify(caseItem, null, 2));
+      console.log(
+        "Iniciando edição do caso:",
+        JSON.stringify(caseItem, null, 2)
+      );
       try {
         setEditCaseId(caseItem.id);
         setEspecificacao(caseItem.title || "");
@@ -491,28 +488,32 @@ function CasesScreen({ navigation }) {
   const handleDeleteCase = useCallback(
     (caseId) => {
       console.log("Iniciando exclusão do caso ID:", caseId);
-      Alert.alert("Confirmar Exclusão", "Tem certeza que deseja desativar este caso?", [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Excluir",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await deleteCase(caseId);
-              const casesData = await fetchCases();
-              setCases(Array.isArray(casesData) ? casesData : []);
-              setFilteredCases(Array.isArray(casesData) ? casesData : []);
-              Alert.alert("Sucesso", "Caso desativado com sucesso!");
-              console.log("Caso excluído, ID:", caseId);
-              setModalVisible(false);
-            } catch (error) {
-              const errorMessage = getErrorMessage(error);
-              Alert.alert("Erro", errorMessage);
-              console.error("Erro ao excluir caso:", errorMessage, error);
-            }
+      Alert.alert(
+        "Confirmar Exclusão",
+        "Tem certeza que deseja desativar este caso?",
+        [
+          { text: "Cancelar", style: "cancel" },
+          {
+            text: "Excluir",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await deleteCase(caseId);
+                const casesData = await fetchCases();
+                setCases(Array.isArray(casesData) ? casesData : []);
+                setFilteredCases(Array.isArray(casesData) ? casesData : []);
+                Alert.alert("Sucesso", "Caso desativado com sucesso!");
+                console.log("Caso excluído, ID:", caseId);
+                setModalVisible(false);
+              } catch (error) {
+                const errorMessage = getErrorMessage(error);
+                Alert.alert("Erro", errorMessage);
+                console.error("Erro ao excluir caso:", errorMessage, error);
+              }
+            },
           },
-        },
-      ]);
+        ]
+      );
     },
     [getErrorMessage]
   );
@@ -536,7 +537,12 @@ function CasesScreen({ navigation }) {
       return;
     }
     try {
-      console.log("Solicitando exame:", requestedExam, "para caso ID:", selectedCase.id);
+      console.log(
+        "Solicitando exame:",
+        requestedExam,
+        "para caso ID:",
+        selectedCase.id
+      );
       const content = JSON.parse(selectedCase.content || "{}");
       const updatedContent = {
         ...content,
@@ -557,7 +563,10 @@ function CasesScreen({ navigation }) {
         selectedCase.vitimas,
         JSON.stringify(updatedContent)
       );
-      Alert.alert("Sucesso", `Exame "${requestedExam}" solicitado com sucesso!`);
+      Alert.alert(
+        "Sucesso",
+        `Exame "${requestedExam}" solicitado com sucesso!`
+      );
       setRequestedExam("");
       setShowExamMenu(false);
       const casesData = await fetchCases();
@@ -584,7 +593,10 @@ function CasesScreen({ navigation }) {
 
   const handleViewEvidences = useCallback(() => {
     if (!selectedCase) return;
-    console.log("Navegando para Evidencia com filtro, caseId:", selectedCase.id);
+    console.log(
+      "Navegando para Evidencia com filtro, caseId:",
+      selectedCase.id
+    );
     navigation.navigate("Evidencia", {
       caseId: selectedCase.id,
       filterByCase: true,
@@ -637,7 +649,8 @@ function CasesScreen({ navigation }) {
   const renderCaseRow = useCallback(
     (caseItem, index) => {
       const victimsByCaseId = victims.filter((v) => v.caseId === caseItem.id);
-      const victimCount = caseItem.vitimas?.length || victimsByCaseId.length || 0;
+      const victimCount =
+        caseItem.vitimas?.length || victimsByCaseId.length || 0;
       console.log(`Renderizando linha do caso ${caseItem.id}`, {
         vitimasField: caseItem.vitimas,
         victimsByCaseId: JSON.stringify(victimsByCaseId, null, 2),
@@ -652,9 +665,15 @@ function CasesScreen({ navigation }) {
           </Text>
           <Text style={localStyles.cell}>{victimCount} vítima(s)</Text>
           <View
-            style={[localStyles.cell, localStyles.statusCell, getStatusStyle(caseItem.statusCase)]}
+            style={[
+              localStyles.cell,
+              localStyles.statusCell,
+              getStatusStyle(caseItem.statusCase),
+            ]}
           >
-            <Text style={localStyles.statusText}>{caseItem.statusCase || "-"}</Text>
+            <Text style={localStyles.statusText}>
+              {caseItem.statusCase || "-"}
+            </Text>
           </View>
           <View style={[localStyles.cell, localStyles.actionsCell]}>
             <TouchableOpacity
@@ -679,11 +698,21 @@ function CasesScreen({ navigation }) {
         </View>
       );
     },
-    [victims, peritos, getStatusStyle, handleViewCase, handleEditCase, handleDeleteCase]
+    [
+      victims,
+      peritos,
+      getStatusStyle,
+      handleViewCase,
+      handleEditCase,
+      handleDeleteCase,
+    ]
   );
 
   const renderReportModal = () => {
-    console.log("Renderizando reportModal, reportModalVisible:", reportModalVisible);
+    console.log(
+      "Renderizando reportModal, reportModalVisible:",
+      reportModalVisible
+    );
     if (!reportModalVisible) return null;
     return (
       <Portal>
@@ -707,7 +736,9 @@ function CasesScreen({ navigation }) {
               {reportContent ? (
                 <Markdown style={markdownStyles}>{reportContent}</Markdown>
               ) : (
-                <Text style={modalStyles.placeholderText}>Nenhum conteúdo disponível</Text>
+                <Text style={modalStyles.placeholderText}>
+                  Nenhum conteúdo disponível
+                </Text>
               )}
             </View>
             {reportError && (
@@ -752,7 +783,10 @@ function CasesScreen({ navigation }) {
   const renderModal = () => {
     if (!selectedCase) return null;
     const victimDetails = victims
-      .filter((v) => selectedCase.vitimas?.includes(v.id) || v.caseId === selectedCase.id)
+      .filter(
+        (v) =>
+          selectedCase.vitimas?.includes(v.id) || v.caseId === selectedCase.id
+      )
       .map((v) => ({
         id: v.id,
         name: v.name,
@@ -783,7 +817,9 @@ function CasesScreen({ navigation }) {
               <Text style={modalStyles.label}>Título:</Text>
               <TextInput
                 value={selectedCase.title || ""}
-                onChangeText={(text) => setSelectedCase({ ...selectedCase, title: text })}
+                onChangeText={(text) =>
+                  setSelectedCase({ ...selectedCase, title: text })
+                }
                 mode="outlined"
                 style={modalStyles.input}
               />
@@ -804,7 +840,9 @@ function CasesScreen({ navigation }) {
               <Text style={modalStyles.label}>Data do Fato:</Text>
               <TextInput
                 value={selectedCase.dateFact || ""}
-                onChangeText={(text) => setSelectedCase({ ...selectedCase, dateFact: text })}
+                onChangeText={(text) =>
+                  setSelectedCase({ ...selectedCase, dateFact: text })
+                }
                 mode="outlined"
                 style={modalStyles.input}
                 placeholder="YYYY-MM-DD"
@@ -812,25 +850,34 @@ function CasesScreen({ navigation }) {
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Classificação:</Text>
-              <Text style={modalStyles.value}>{selectedCase.classification || "-"}</Text>
+              <Text style={modalStyles.value}>
+                {selectedCase.classification || "-"}
+              </Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Responsável:</Text>
               <Text style={modalStyles.value}>
-                {peritos.find((p) => p.id === selectedCase.managerId)?.name || "-"}
+                {peritos.find((p) => p.id === selectedCase.managerId)?.name ||
+                  "-"}
               </Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Solicitante:</Text>
-              <Text style={modalStyles.value}>{selectedCase.solicitante || "-"}</Text>
+              <Text style={modalStyles.value}>
+                {selectedCase.solicitante || "-"}
+              </Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Status:</Text>
-              <Text style={modalStyles.value}>{selectedCase.statusCase || "-"}</Text>
+              <Text style={modalStyles.value}>
+                {selectedCase.statusCase || "-"}
+              </Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Arquivo:</Text>
-              <Text style={modalStyles.value}>{selectedCase.fileName || "Nenhum"}</Text>
+              <Text style={modalStyles.value}>
+                {selectedCase.fileName || "Nenhum"}
+              </Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Vítimas:</Text>
@@ -849,7 +896,8 @@ function CasesScreen({ navigation }) {
               {contentData.requestedExams?.length > 0 ? (
                 contentData.requestedExams.map((exam, index) => (
                   <Text key={index} style={modalStyles.value}>
-                    {exam.exam} (Solicitado em: {new Date(exam.date).toLocaleDateString()})
+                    {exam.exam} (Solicitado em:{" "}
+                    {new Date(exam.date).toLocaleDateString()})
                   </Text>
                 ))
               ) : (
@@ -881,7 +929,9 @@ function CasesScreen({ navigation }) {
             <View style={modalStyles.detailContainer}>
               <View style={modalStyles.reportHeader}>
                 <Text style={modalStyles.label}>Laudo Gerado:</Text>
-                <TouchableOpacity onPress={() => setIsReportExpanded(!isReportExpanded)}>
+                <TouchableOpacity
+                  onPress={() => setIsReportExpanded(!isReportExpanded)}
+                >
                   <MaterialIcons
                     name={isReportExpanded ? "expand-less" : "expand-more"}
                     size={24}
@@ -895,7 +945,8 @@ function CasesScreen({ navigation }) {
                     <Markdown style={markdownStyles}>{reportContent}</Markdown>
                   ) : (
                     <Text style={modalStyles.placeholderText}>
-                      Nenhum laudo gerado. Clique em "Gerar Laudo" para criar um.
+                      Nenhum laudo gerado. Clique em "Gerar Laudo" para criar
+                      um.
                     </Text>
                   )}
                 </View>
@@ -1115,8 +1166,14 @@ function CasesScreen({ navigation }) {
               </TouchableRipple>
             }
           >
-            <Menu.Item onPress={() => setTipoCaso("CRIMINAL")} title="Exame Criminal" />
-            <Menu.Item onPress={() => setTipoCaso("ACIDENTE")} title="Acidente" />
+            <Menu.Item
+              onPress={() => setTipoCaso("CRIMINAL")}
+              title="Exame Criminal"
+            />
+            <Menu.Item
+              onPress={() => setTipoCaso("ACIDENTE")}
+              title="Acidente"
+            />
             <Menu.Item
               onPress={() => setTipoCaso("IDENTIFICACAO")}
               title="Identificação"
@@ -1132,7 +1189,8 @@ function CasesScreen({ navigation }) {
                 style={stylesCases.menuInput}
               >
                 <Text>
-                  {peritos.find((p) => p.id === perito)?.name || "Perito Responsável*"}
+                  {peritos.find((p) => p.id === perito)?.name ||
+                    "Perito Responsável*"}
                 </Text>
               </TouchableRipple>
             }
@@ -1177,9 +1235,18 @@ function CasesScreen({ navigation }) {
               </TouchableRipple>
             }
           >
-            <Menu.Item onPress={() => setStatusCase("ANDAMENTO")} title="Em andamento" />
-            <Menu.Item onPress={() => setStatusCase("FINALIZADO")} title="Finalizado" />
-            <Menu.Item onPress={() => setStatusCase("ARQUIVADO")} title="Arquivado" />
+            <Menu.Item
+              onPress={() => setStatusCase("ANDAMENTO")}
+              title="Em andamento"
+            />
+            <Menu.Item
+              onPress={() => setStatusCase("FINALIZADO")}
+              title="Finalizado"
+            />
+            <Menu.Item
+              onPress={() => setStatusCase("ARQUIVADO")}
+              title="Arquivado"
+            />
           </Menu>
 
           <Menu
@@ -1209,11 +1276,15 @@ function CasesScreen({ navigation }) {
 
           {selectedVictims.length > 0 && (
             <View style={stylesCases.sectionVictims}>
-              <Text style={stylesCases.sectionVictimsTitle}>Vítimas Selecionadas:</Text>
+              <Text style={stylesCases.sectionVictimsTitle}>
+                Vítimas Selecionadas:
+              </Text>
               {selectedVictims.map((victim) => (
                 <View key={victim.id} style={stylesCases.selectedVictim}>
                   <Text>{`${victim.name} (${victim.id.slice(0, 4)})`}</Text>
-                  <TouchableOpacity onPress={() => handleRemoveVictim(victim.id)}>
+                  <TouchableOpacity
+                    onPress={() => handleRemoveVictim(victim.id)}
+                  >
                     <MaterialIcons name="close" size={20} color="#f44336" />
                   </TouchableOpacity>
                 </View>
@@ -1263,7 +1334,11 @@ function CasesScreen({ navigation }) {
           </Button>
 
           {editCaseId && (
-            <Button mode="outlined" style={stylesCases.botao} onPress={resetForm}>
+            <Button
+              mode="outlined"
+              style={stylesCases.botao}
+              onPress={resetForm}
+            >
               Cancelar
             </Button>
           )}
@@ -1309,9 +1384,13 @@ function CasesScreen({ navigation }) {
 
       <View style={stylesCases.menuNav}>
         <View style={stylesCases.menuNavi}>
-          <MaterialIcons name="home" size={40} color="#666" />
-          <MaterialIcons name="add-circle" size={40} color="#666" />
-          <MaterialIcons name="search" size={35} color="#666" />
+          <MaterialIcons name="home" size={28} color="#3A5BA0" />
+
+          <View style={stylesCases.addButtonWrapper}>
+            <MaterialIcons name="add" size={28} color="#fff" />
+          </View>
+
+          <MaterialIcons name="search" size={28} color="#3A5BA0" />
         </View>
       </View>
     </View>
