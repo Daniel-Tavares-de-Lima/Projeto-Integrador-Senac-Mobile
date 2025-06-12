@@ -1394,6 +1394,7 @@ function CasesScreen({ navigation }) {
         </View>
       </View>
     </View>
+    
   );
 }
 

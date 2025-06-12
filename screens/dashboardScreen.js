@@ -9,6 +9,7 @@ import { Dimensions } from "react-native";
 import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 import styles from '../styles/stylesDashboard';
+import stylesCases from "../styles/stylesCases";
 import { fetchDashboardData, filterCasesByDate, getCaseTypeData, getStatusData, getGenderData } from '../services/dashboardServices';
 
 const screenWidth = Dimensions.get('window').width;
@@ -274,13 +275,18 @@ function DashboardScreen({ navigation }) {
         </View>
       </ScrollView>
 
-      <View style={styles.menuNav}>
-        <View style={styles.menuNavi}>
-          <MaterialIcons name="home" size={40} color="#2d4a78" />
-          <MaterialIcons name="add-circle" size={40} color="#2d4a78" />
-          <MaterialIcons name="search" size={40} color="#2d4a78" />
+      <View style={stylesCases.menuNav}>
+        <View style={stylesCases.menuNavi}>
+          <MaterialIcons name="home" size={28} color="#3A5BA0" />
+
+          <View style={stylesCases.addButtonWrapper}>
+            <MaterialIcons name="add" size={28} color="#fff" />
+          </View>
+
+          <MaterialIcons name="search" size={28} color="#3A5BA0" />
         </View>
       </View>
+
     </View>
   );
 }
