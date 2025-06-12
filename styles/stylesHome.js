@@ -23,7 +23,7 @@ export default StyleSheet.create({
 
    controle:{
     flexDirection: "row",
-    backgroundColor: "#f4f5c5"
+    justifyContent: 'space-between',
   },
 
   title: {

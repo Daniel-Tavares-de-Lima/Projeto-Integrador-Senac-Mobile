@@ -257,6 +257,7 @@ const Home = () => {
         <Appbar.Action
           icon="logout"
           color="#2d4a78"
+          size={30}
           onPress={async () => {
             console.log('Iniciando logout');
             try {
