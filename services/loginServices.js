@@ -16,9 +16,8 @@ export async function login(email, password) {
       throw new Error(data.message || 'Erro ao fazer login');
     }
 
-    // Armazena o token e informações do usuário no AsyncStorage
-    await AsyncStorage.setItem('token', data.accessToken);
-    await AsyncStorage.setItem('userInfo', JSON.stringify({ name: data.name || 'Usuário', role: data.role || 'USER' }));
+    await AsyncStorage.setItem('accessToken', data.accessToken); 
+    await AsyncStorage.setItem('userInfo', JSON.stringify({ name: data.name || 'Usuário', role: data.role || 'USER', email: data.email || email }));
 
     return data;
   } catch (error) {
@@ -29,7 +28,7 @@ export async function login(email, password) {
 
 export async function logout() {
   try {
-    await AsyncStorage.removeItem('token');
+    await AsyncStorage.removeItem('accessToken'); 
     await AsyncStorage.removeItem('userInfo');
   } catch (error) {
     console.error('Erro ao fazer logout:', error.message);
@@ -39,7 +38,7 @@ export async function logout() {
 
 export async function getToken() {
   try {
-    const token = await AsyncStorage.getItem('token');
+    const token = await AsyncStorage.getItem('accessToken'); 
     return token;
   } catch (error) {
     console.error('Erro ao obter token:', error.message);

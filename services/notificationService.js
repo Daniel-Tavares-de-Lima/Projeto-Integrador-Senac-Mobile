@@ -2,13 +2,15 @@
 import { fetchCases } from './casosServices';
 import { fetchEvidences } from './evidenciaServices';
 
-export const fetchNotifications = async () => {
+export const fetchNotifications = async (token) => {
   try {
-    const [cases, evidences] = await Promise.all([fetchCases(), fetchEvidences()]);
-    
+    const [cases, evidences] = await Promise.all([
+      fetchCases(token),
+      fetchEvidences(token),
+    ]);
+
     const notifications = [];
 
-    // Notificações baseadas em casos
     cases.forEach((caseItem) => {
       if (caseItem.statusCase === 'ARQUIVADO' || !caseItem.vitimas?.length) {
         notifications.push({
@@ -30,7 +32,6 @@ export const fetchNotifications = async () => {
       }
     });
 
-    // Notificações baseadas em evidências
     evidences.forEach((evidence) => {
       if (evidence.status === 'pending') {
         notifications.push({
@@ -43,11 +44,10 @@ export const fetchNotifications = async () => {
       }
     });
 
-    // Ordenar por timestamp (mais recente primeiro)
     return notifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   } catch (error) {
     console.error('Erro em fetchNotifications:', error.message);
-    throw new Error(error.message || 'Erro ao buscar notificações');
+    throw new Error(error.message || 'Usuário não autenticado. Faça login novamente.');
   }
 };
 

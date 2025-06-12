@@ -10,6 +10,7 @@ import { fetchNotifications } from '../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
+
 const Home = () => {
   const [greeting, setGreeting] = useState('');
   const [doctorName, setDoctorName] = useState('Usuário');
@@ -34,110 +35,121 @@ const Home = () => {
     };
 
     updateGreeting();
-    const interval = setInterval(updateGreeting, 60000);
-    return () => clearInterval(interval);
-  }, [greeting]);
+    const intervalId = setInterval(updateGreeting, 60000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setIsLoading(true);
-      try {
-        // Carregar userInfo
-        console.log('Iniciando carregamento de userInfo');
-        const userInfo = await AsyncStorage.getItem('userInfo');
-        let parsedUserInfo = {};
-        try {
-          if (userInfo) {
-            parsedUserInfo = JSON.parse(userInfo);
-            console.log('userInfo parseado com sucesso:', parsedUserInfo);
-          } else {
-            console.log('Nenhum userInfo encontrado no AsyncStorage');
-          }
-        } catch (parseError) {
-          console.error('Erro ao parsear userInfo:', parseError);
-          await AsyncStorage.setItem('userInfo', JSON.stringify({}));
-        }
-        setDoctorName(parsedUserInfo?.name || 'Usuário');
-        console.log('DoctorName definido:', parsedUserInfo?.name || 'Usuário');
+  const fetchData = async () => {
+    setIsLoading(true);
+    try {
+      // Carregar userInfo e token        
+      console.log('Iniciando carregamento de userInfo e token');
+      const userInfo = await AsyncStorage.getItem('userInfo');
+      const token = await AsyncStorage.getItem('accessToken');
 
-        // Buscar casos, evidências e notificações
-        console.log('Iniciando chamadas de API: fetchCases, fetchEvidences, fetchNotifications');
-        const [cases, evidences, notificationsData] = await Promise.all([
-          fetchCases(),
-          fetchEvidences(),
-          fetchNotifications(),
+      if (!token) {
+        console.log('Token não encontrado. Redirecionando para login.');
+        Alert.alert('Sessão expirada', 'Faça login novamente.', [
+          { text: 'OK', onPress: () => navigation.replace('Login') }
         ]);
-        console.log('Dados recebidos - Casos:', cases);
-        console.log('Dados recebidos - Evidências:', evidences);
-        console.log('Dados recebidos - Notificações:', notificationsData);
-
-        // Calcular estatísticas para Resumo do Dia
-        const statusCounter = {
-          ANDAMENTO: 0,
-          FINALIZADO: 0,
-          ARQUIVADO: 0,
-        };
-        cases.forEach((item) => {
-          if (item.statusCase && statusCounter[item.statusCase] !== undefined) {
-            statusCounter[item.statusCase]++;
-          }
-        });
-        console.log('Contagem de status:', statusCounter);
-        setStats({
-          andamento: statusCounter.ANDAMENTO,
-          finalizados: statusCounter.FINALIZADO,
-          arquivados: statusCounter.ARQUIVADO,
-        });
-        console.log('Stats atualizado:', {
-          andamento: statusCounter.ANDAMENTO,
-          finalizados: statusCounter.FINALIZADO,
-          arquivados: statusCounter.ARQUIVADO,
-        });
-
-        // Atualizar notificações
-        setNotifications(notificationsData.slice(0, 5));
-        console.log('Notificações limitadas a 5:', notificationsData.slice(0, 5));
-
-        // Criar atividades recentes
-        const activities = [
-          ...cases
-            .filter(c => c.createdAt)
-            .map(c => ({
-              id: `case_${c.id}`,
-              text: `Caso #${c.id} iniciado`,
-              timestamp: c.createdAt,
-              color: '#F97316',
-            })),
-          ...evidences
-            .filter(e => e.dateCollection)
-            .map(e => ({
-              id: `evidence_${e.id}`,
-              text: `Nova evidência ao caso #${e.caseId}`,
-              timestamp: e.dateCollection,
-              color: '#3B82F6',
-            })),
-        ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-         .slice(0, 3);
-        setRecentActivities(activities);
-        console.log('Atividades recentes limitadas a 3:', activities);
-
-        setError(null);
-        console.log('Dados carregados com sucesso');
-      } catch (err) {
-        const errorMessage = err.message || 'Erro ao carregar dados';
-        setError(errorMessage);
-        console.error('Erro em fetchData:', errorMessage, err);
-        setStats({ andamento: 0, finalizados: 0, arquivados: 0 });
-        setNotifications([]);
-        setRecentActivities([]);
-      } finally {
-        setIsLoading(false);
-        console.log('Carregamento concluído, isLoading:', false);
+        return;
       }
-    };
 
-    fetchData();
-  }, []);
+      let parsedUserInfo = {};
+      try {
+        if (userInfo) {
+          parsedUserInfo = JSON.parse(userInfo);
+          console.log('userInfo parseado:', parsedUserInfo);
+        } else {
+          console.log('Nenhum userInfo encontrado no AsyncStorage');
+        }
+      } catch (parseError) {
+        console.error('Erro ao parsear userInfo:', parseError);
+        await AsyncStorage.setItem('userInfo', JSON.stringify({}));
+      }
+      setDoctorName(parsedUserInfo?.name || 'Usuário');
+      console.log('DoctorName definido:', parsedUserInfo?.name || 'Usuário');
+
+      // Buscar dados
+      console.log('Iniciando chamadas de API: fetchCases, fetchEvidences, fetchNotifications');
+      const [cases, evidences, notificationsData] = await Promise.all([
+        fetchCases(token),
+        fetchEvidences(token),
+        fetchNotifications(token),
+      ]);
+      console.log('Dados recebidos - Casos:', cases);
+      console.log('Dados recebidos - Evidências:', evidences);
+      console.log('Dados recebidos - Notificações:', notificationsData);
+
+      // Calcular estatísticas
+      const statusCounter = {
+        ANDAMENTO: 0,
+        FINALIZADO: 0,
+        ARQUIVADO: 0,
+      };
+      cases.forEach((item) => {
+        if (item.statusCase && statusCounter[item.statusCase] !== undefined) {
+          statusCounter[item.statusCase]++;
+        }
+      });
+      console.log('Contagem de status:', statusCounter);
+      setStats({
+        andamento: statusCounter.ANDAMENTO,
+        finalizados: statusCounter.FINALIZADO,
+        arquivados: statusCounter.ARQUIVADO,
+      });
+
+      // Atualizar notificações
+      setNotifications(notificationsData.slice(0, 5));
+      console.log('Notificações limitadas a 5:', notificationsData.slice(0, 5));
+
+      // Criar atividades recentes
+      const activities = [
+        ...cases
+          .filter(c => c.createdAt)
+          .map(c => ({
+            id: `case_${c.id}`,
+            text: `Caso #${c.id} iniciado`,
+            timestamp: c.createdAt,
+            color: '#F97316',
+          })),
+        ...evidences
+          .filter(e => e.dateCollection)
+          .map(e => ({
+            id: `evidence_${e.id}`,
+            text: `Nova evidência ao caso #${e.caseId}`,
+            timestamp: e.dateCollection,
+            color: '#3B82F6',
+          })),
+      ]
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+      .slice(0, 3);
+      setRecentActivities(activities);
+      console.log('Atividades recentes limitadas a 3:', activities);
+
+      setError(null);
+    } catch (err) {
+      const errorMessage = err.message || 'Erro ao carregar dados';
+      console.error('Erro em fetchData:', errorMessage, err);
+      setError(errorMessage);
+      setStats({ andamento: 0, finalizados: 0, arquivados: 0 });
+      setNotifications([]);
+      setRecentActivities([]);
+      if (errorMessage.includes('Usuário não autenticado')) {
+        console.log('Erro de autenticação detectado. Redirecionando para login.');
+        Alert.alert('Sessão expirada', 'Faça login novamente.', [
+          { text: 'OK', onPress: () => navigation.replace('Login') },
+        ]);
+      }
+    } finally {
+      setIsLoading(false);
+      console.log('Carregamento concluído, isLoading:', false);
+    }
+  };
+
+  fetchData();
+}, [navigation]);
 
   const quickActions = [
     {
@@ -198,7 +210,7 @@ const Home = () => {
   const formatTimestamp = (timestamp) => {
     const date = new Date(timestamp);
     const now = new Date();
-    const diff = (now - date) / 1000; // Diferença em segundos
+    const diff = (now - date) / 1000;
     let formattedTime;
     if (diff < 3600) {
       formattedTime = `Há ${Math.floor(diff / 60)} minutos`;
@@ -248,11 +260,10 @@ const Home = () => {
           onPress={async () => {
             console.log('Iniciando logout');
             try {
-              await AsyncStorage.removeItem('token');
+              await AsyncStorage.removeItem('accessToken');
               await AsyncStorage.removeItem('userInfo');
               console.log('Token e userInfo removidos do AsyncStorage');
               navigation.replace('Login');
-              console.log('Navegando para Login');
             } catch (logoutError) {
               console.error('Erro durante logout:', logoutError);
             }
@@ -344,6 +355,6 @@ const Home = () => {
       </View>
     </ScrollView>
   );
-};
 
+}
 export default Home;

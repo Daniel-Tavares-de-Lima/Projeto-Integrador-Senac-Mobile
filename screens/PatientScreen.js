@@ -4,6 +4,8 @@ import { Appbar, Button, TextInput, Provider as PaperProvider } from 'react-nati
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import styles from '../styles/stylesPatients';
+import { StyleSheet, Text, View } from 'react-native';
+
 
 const mockPatients = [
     { id: '022', name: 'Julia Maria', type: 'Acidente', responsible: 'Julia Maria', status: 'Finalizado', sex: 'Feminino', ethnicity: 'Branca', address: 'Rua Santo de Aquino, 123', applicant: 'Carlos Andrade', lastExam: 'Exame odontolegal comparativo' },

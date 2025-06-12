@@ -1,18 +1,42 @@
-
 import React, { useState, useEffect, useCallback } from "react";
-import { View, ScrollView, Text, TouchableOpacity, Alert, Modal} from "react-native";
-import { Appbar, Button, TextInput, Menu, Divider, HelperText, TouchableRipple, Portal } from "react-native-paper";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  View,
+  ScrollView,
+  Text,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  Clipboard,
+} from "react-native";
+import {
+  Appbar,
+  Button,
+  TextInput,
+  Menu,
+  Divider,
+  HelperText,
+  TouchableRipple,
+  Portal,
+} from "react-native-paper";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import styles from "../styles/stylesHome";
 import stylesCases from "../styles/stylesCases";
 import stylesVictims from "../styles/stylesVitima";
-import { fetchCases, createCase, updateCase, deleteCase } from '../services/casosServices';
-import { fetchVictims } from '../services/vitimaServices';
-import { apiRequest } from '../services/apiService';
-import * as DocumentPicker from 'expo-document-picker';
+import { updateVictim } from "../services/vitimaServices";
+import {
+  fetchCases,
+  createCase,
+  updateCase,
+  deleteCase,
+} from "../services/casosServices";
+import { fetchVictims } from "../services/vitimaServices";
+import { apiRequest } from "../services/apiService";
+import { generateReport } from "../services/serverServicesIA";
+import * as DocumentPicker from "expo-document-picker";
+import Markdown from "react-native-markdown-display";
 
-import { StyleSheet } from 'react-native';
+import { StyleSheet } from "react-native";
 
 function CasesScreen({ navigation }) {
   const [especificacao, setEspecificacao] = useState("");
@@ -23,7 +47,6 @@ function CasesScreen({ navigation }) {
   const [cases, setCases] = useState([]);
   const [filteredCases, setFilteredCases] = useState([]);
   const [victims, setVictims] = useState([]);
-  const [peritos, setPeritos] = useState([]);
   const [selectedVictims, setSelectedVictims] = useState([]);
   const [showVictimMenu, setShowVictimMenu] = useState(false);
   const [tipoEvidencia, setTipoEvidencia] = useState("");
@@ -42,121 +65,274 @@ function CasesScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [editCaseId, setEditCaseId] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  const [userName, setUserName] = useState('Usuário');
+  const [userName, setUserName] = useState("Usuário");
   const [selectedCase, setSelectedCase] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [requestedExam, setRequestedExam] = useState("");
   const [showExamMenu, setShowExamMenu] = useState(false);
+  const [reportModalVisible, setReportModalVisible] = useState(false);
+  const [reportTitle, setReportTitle] = useState("");
+  const [reportContent, setReportContent] = useState("");
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [reportError, setReportError] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [peritos, setPeritos] = useState([]);
+  const [isReportExpanded, setIsReportExpanded] = useState(false);
 
   const examOptions = [
-    'Exame odontolegal comparativo',
-    'Exame antropológico',
-    'Exame radiológico',
+    "Exame odontolegal comparativo",
+    "Exame antropológico",
+    "Exame radiológico",
   ];
 
   const getErrorMessage = useCallback((error) => {
-    return error instanceof Error ? error.message : 'Erro desconhecido';
+    return error instanceof Error ? error.message : "Erro desconhecido";
   }, []);
+
+  const fetchReports = useCallback(
+    async (caseId) => {
+      try {
+        console.log("Buscando relatórios para caseId:", caseId);
+        const response = await apiRequest("/reports", "GET", null, true);
+        const caseReports = Array.isArray(response)
+          ? response.filter((report) => report.caseId === caseId)
+          : [];
+        setReports(caseReports);
+        console.log("Relatórios encontrados:", caseReports);
+      } catch (error) {
+        const errorMessage = getErrorMessage(error);
+        console.error("Erro ao buscar relatórios:", errorMessage, error);
+        setReports([]);
+      }
+    },
+    [getErrorMessage]
+  );
+
+  const handleGenerateReport = useCallback(
+    async () => {
+      if (!selectedCase) return;
+      setIsGeneratingReport(true);
+      setReportError(null);
+      try {
+        console.log("Gerando relatório para caso ID:", selectedCase.id);
+        const victimDetails = victims.filter(
+          (v) =>
+            selectedCase.vitimas?.includes(v.id) || v.caseId === selectedCase.id
+        );
+        const report = await generateReport(selectedCase, victimDetails, peritos);
+        setReportTitle(report.title);
+        setReportContent(report.content);
+        setReportModalVisible(true);
+        console.log("Relatório gerado:", {
+          title: report.title,
+          content: report.content,
+        });
+      } catch (error) {
+        const errorMessage = getErrorMessage(error);
+        setReportError(errorMessage);
+        Alert.alert("Erro", errorMessage);
+        console.error("Erro ao gerar relatório:", errorMessage, error);
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    },
+    [selectedCase, victims, peritos, getErrorMessage]
+  );
+
+  const handleSaveReport = useCallback(
+    async () => {
+      if (!selectedCase || !reportTitle || !reportContent) {
+        Alert.alert("Erro", "Título ou conteúdo do relatório inválido.");
+        return;
+      }
+      try {
+        console.log("Salvando relatório para caseId:", selectedCase.id);
+        const reportDto = {
+          title: reportTitle,
+          content: reportContent,
+          caseId: selectedCase.id,
+        };
+        await apiRequest("/reports", "POST", reportDto, true);
+        Alert.alert("Sucesso", "Relatório salvo com sucesso!");
+        setReportModalVisible(false);
+        fetchReports(selectedCase.id);
+      } catch (error) {
+        const errorMessage = getErrorMessage(error);
+        setReportError(errorMessage);
+        Alert.alert("Erro", errorMessage);
+        console.error("Erro ao salvar relatório:", errorMessage, error);
+      }
+    },
+    [selectedCase, reportTitle, reportContent, getErrorMessage, fetchReports]
+  );
+
+  const handleCopyReport = useCallback(() => {
+    Clipboard.setString(reportContent);
+    Alert.alert("Sucesso", "Relatório copiado para a área de transferência!");
+  }, [reportContent]);
+
+  const handleViewReport = useCallback(
+    (report) => {
+      setReportTitle(report.title);
+      setReportContent(report.content);
+      setReportModalVisible(true);
+    },
+    []
+  );
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        console.log('Iniciando fetchData em CasesScreen');
-        const userInfo = await AsyncStorage.getItem('userInfo');
+        console.log("Iniciando fetchData em CasesScreen");
+        const userInfo = await AsyncStorage.getItem("userInfo");
         let parsedUserInfo = {};
         try {
           if (userInfo) {
             parsedUserInfo = JSON.parse(userInfo);
-            console.log('userInfo parseado:', parsedUserInfo);
+            console.log("userInfo parseado:", parsedUserInfo);
           } else {
-            console.log('Nenhum userInfo encontrado no AsyncStorage');
+            console.log("Nenhum userInfo encontrado no AsyncStorage");
           }
         } catch (parseError) {
-          console.error('Erro ao parsear userInfo:', parseError);
-          await AsyncStorage.setItem('userInfo', JSON.stringify({}));
+          console.error("Erro ao parsear userInfo:", parseError);
+          await AsyncStorage.setItem("userInfo", JSON.stringify({}));
         }
-        setUserRole(parsedUserInfo?.role || 'UNKNOWN');
-        setUserName(parsedUserInfo?.name || 'Usuário');
+        setUserRole(parsedUserInfo?.role || "UNKNOWN");
+        setUserName(parsedUserInfo?.name || "Usuário");
 
-        console.log('Buscando dados: cases, victims, users');
+        const token = await AsyncStorage.getItem("accessToken");
+        if (!token) {
+          console.error("Token não encontrado. Redirecionando para login.");
+          Alert.alert("Sessão expirada", "Faça login novamente.", [
+            { text: "OK", onPress: () => navigation.navigate("Login") },
+          ]);
+          return;
+        }
+
+        console.log("Buscando dados: cases, victims, users");
         const [casesData, victimsData, usersData] = await Promise.all([
-          fetchCases(),
-          fetchVictims(),
-          apiRequest('/users', 'GET', null, true),
+          fetchCases().catch((err) => {
+            console.error("Erro em fetchCases:", err.message);
+            return [];
+          }),
+          fetchVictims().catch((err) => {
+            console.error("Erro em fetchVictims:", err.message);
+            return [];
+          }),
+          apiRequest("/users", "GET", null, true).catch((err) => {
+            console.error("Erro em apiRequest /users:", err.message);
+            return [];
+          }),
         ]);
-        console.log('Dados recebidos - Casos:', JSON.stringify(casesData, null, 2));
-        console.log('Dados recebidos - Vítimas:', JSON.stringify(victimsData, null, 2));
-        console.log('Dados recebidos - Usuários:', JSON.stringify(usersData, null, 2));
+
+        console.log("Dados recebidos - Casos:", casesData);
+        console.log("Dados recebidos - Vítimas:", victimsData);
+        console.log("Dados recebidos - Usuários:", usersData);
 
         setCases(Array.isArray(casesData) ? casesData : []);
         setFilteredCases(Array.isArray(casesData) ? casesData : []);
         setVictims(Array.isArray(victimsData) ? victimsData : []);
-        setPeritos(usersData.filter((user) => user.role === 'PERITO'));
+        setPeritos(
+          Array.isArray(usersData)
+            ? usersData.filter((user) => user.role === "PERITO")
+            : []
+        );
         setError(null);
       } catch (error) {
         const errorMessage = getErrorMessage(error);
         setError(errorMessage);
-        console.error('Erro em fetchData:', errorMessage, error);
+        console.error("Erro em fetchData:", errorMessage, error);
         setCases([]);
         setFilteredCases([]);
         setVictims([]);
         setPeritos([]);
+        if (
+          errorMessage.includes("Token de autenticação não encontrado") ||
+          errorMessage.includes("Não autorizado")
+        ) {
+          Alert.alert("Sessão expirada", "Faça login novamente.", [
+            { text: "OK", onPress: () => navigation.navigate("Login") },
+          ]);
+        }
       } finally {
         setIsLoading(false);
-        console.log('fetchData concluído, isLoading:', false);
+        console.log("fetchData concluído, isLoading:", false);
       }
     };
     fetchData();
-  }, [getErrorMessage]);
+  }, [getErrorMessage, navigation]);
 
   useEffect(() => {
-    console.log('Filtrando casos com pesquisa:', pesquisar);
+    console.log("Filtrando casos com pesquisa:", pesquisar);
     const filtered = cases.filter((caseItem) => {
-      const victimsInCase = victims.filter((v) => caseItem.vitimas?.includes(v.id) || v.caseId === caseItem.id);
-      console.log(`Caso ${caseItem.id} - Vítimas associadas (vitimas ou caseId):`, JSON.stringify(victimsInCase, null, 2));
+      const victimsInCase = victims.filter(
+        (v) => caseItem.vitimas?.includes(v.id) || v.caseId === caseItem.id
+      );
+      console.log(
+        `Caso ${caseItem.id} - Vítimas associadas (vitimas ou caseId):`,
+        JSON.stringify(victimsInCase, null, 2)
+      );
       return (
         caseItem.title.toLowerCase().includes(pesquisar.toLowerCase()) ||
         caseItem.id.toLowerCase().includes(pesquisar.toLowerCase()) ||
-        victimsInCase.some((v) => v.name.toLowerCase().includes(pesquisar.toLowerCase()))
+        victimsInCase.some((v) =>
+          v.name.toLowerCase().includes(pesquisar.toLowerCase())
+        )
       );
     });
     setFilteredCases(filtered);
-    console.log('Casos filtrados:', JSON.stringify(filtered, null, 2));
+    console.log("Casos filtrados:", JSON.stringify(filtered, null, 2));
   }, [pesquisar, cases, victims]);
 
   const handleEscolherArquivo = useCallback(async () => {
     try {
-      console.log('Iniciando escolha de arquivo');
-      const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
-      if (result.type === 'success') {
+      console.log("Iniciando escolha de arquivo");
+      const result = await DocumentPicker.getDocumentAsync({ type: "*/*" });
+      if (result.type === "success") {
         setArquivo({ name: result.name, uri: result.uri });
-        Alert.alert('Sucesso', `Arquivo selecionado: ${result.name}`);
-        console.log('Arquivo selecionado:', result);
+        Alert.alert("Sucesso", `Arquivo selecionado: ${result.name}`);
+        console.log("Arquivo selecionado:", result);
       }
     } catch (err) {
-      console.error('Erro ao selecionar documento:', err);
-      Alert.alert('Erro', 'Não foi possível selecionar o arquivo.');
+      console.error("Erro ao selecionar documento:", err);
+      Alert.alert("Erro", "Não foi possível selecionar o arquivo.");
     }
   }, []);
 
-  const handleSelectVictim = useCallback((victim) => {
-    console.log('Selecionando vítima:', JSON.stringify(victim, null, 2));
-    if (!selectedVictims.find((v) => v.id === victim.id)) {
-      setSelectedVictims([...selectedVictims, victim]);
-    }
-    setShowVictimMenu(false);
-  }, [selectedVictims]);
+  const handleSelectVictim = useCallback(
+    (victim) => {
+      console.log("Selecionando vítima:", JSON.stringify(victim, null, 2));
+      if (!selectedVictims.find((v) => v.id === victim.id)) {
+        setSelectedVictims([...selectedVictims, victim]);
+      }
+      setShowVictimMenu(false);
+    },
+    [selectedVictims]
+  );
 
-  const handleRemoveVictim = useCallback((victimId) => {
-    console.log('Removendo vítima ID:', victimId);
-    setSelectedVictims(selectedVictims.filter((v) => v.id !== victimId));
-  }, [selectedVictims]);
+  const handleRemoveVictim = useCallback(
+    (victimId) => {
+      console.log("Removendo vítima ID:", victimId);
+      setSelectedVictims(selectedVictims.filter((v) => v.id !== victimId));
+    },
+    [selectedVictims]
+  );
 
   const handleSaveCase = useCallback(async () => {
-    if (!especificacao || !descricao || !tipoCaso || !perito || !dataFato || selectedVictims.length === 0) {
-      Alert.alert("Erro", "Preencha todos os campos obrigatórios e selecione pelo menos uma vítima.");
-      console.log('Erro: Campos obrigatórios não preenchidos', {
+    if (
+      !especificacao ||
+      !descricao ||
+      !tipoCaso ||
+      !perito ||
+      !dataFato ||
+      selectedVictims.length === 0
+    ) {
+      Alert.alert(
+        "Erro",
+        "Preencha todos os campos obrigatórios e selecione pelo menos uma vítima."
+      );
+      console.log("Erro: Campos obrigatórios não preenchidos", {
         especificacao,
         descricao,
         tipoCaso,
@@ -166,14 +342,21 @@ function CasesScreen({ navigation }) {
       });
       return;
     }
-    if (statusCase && !["ANDAMENTO", "FINALIZADO", "ARQUIVADO"].includes(statusCase)) {
-      Alert.alert("Erro", "Selecione um status válido: Em andamento, Finalizado ou Arquivado.");
-      console.log('Erro: Status inválido:', statusCase);
+    if (
+      statusCase &&
+      !["ANDAMENTO", "FINALIZADO", "ARQUIVADO"].includes(statusCase)
+    ) {
+      Alert.alert(
+        "Erro",
+        "Selecione um status válido: Em andamento, Finalizado ou Arquivado."
+      );
+      console.log("Erro: Status inválido:", statusCase);
       return;
     }
     try {
       const vitimas = selectedVictims.map((v) => v.id);
-      console.log('Salvando caso com vítimas:', JSON.stringify(vitimas, null, 2));
+      console.log("Salvando caso com vítimas:", JSON.stringify(vitimas, null, 2));
+      let caseId;
       if (editCaseId) {
         await updateCase(
           editCaseId,
@@ -186,11 +369,12 @@ function CasesScreen({ navigation }) {
           statusCase,
           vitimas
         );
+        caseId = editCaseId;
         Alert.alert("Sucesso", "Caso atualizado com sucesso!");
-        console.log('Caso atualizado, ID:', editCaseId);
+        console.log("Caso atualizado, ID:", editCaseId);
         setEditCaseId(null);
       } else {
-        await createCase(
+        const newCase = await createCase(
           especificacao,
           descricao,
           tipoCaso,
@@ -200,23 +384,64 @@ function CasesScreen({ navigation }) {
           statusCase,
           vitimas
         );
+        caseId = newCase.id;
         Alert.alert("Sucesso", "Caso salvo com sucesso!");
-        console.log('Caso criado com sucesso');
+        console.log("Caso criado com sucesso, ID:", caseId);
       }
-      resetForm();
-      const casesData = await fetchCases();
+
+      for (const victim of selectedVictims) {
+        await updateVictim(
+          victim.id,
+          victim.nic,
+          victim.name,
+          victim.sex === "M" ? "Masculino" : "Feminino",
+          victim.birthDate,
+          victim.document,
+          victim.address,
+          victim.ethnicity,
+          victim.odontogramEntries?.[0]?.note || "",
+          victim.anatomicalNotes,
+          caseId
+        );
+        console.log(`Vítima ${victim.id} atualizada com caseId: ${caseId}`);
+      }
+
+      const [casesData, victimsData] = await Promise.all([
+        fetchCases(),
+        fetchVictims(),
+      ]);
       setCases(Array.isArray(casesData) ? casesData : []);
       setFilteredCases(Array.isArray(casesData) ? casesData : []);
-      console.log('Casos atualizados após salvar:', JSON.stringify(casesData, null, 2));
+      setVictims(Array.isArray(victimsData) ? victimsData : []);
+      console.log(
+        "Casos atualizados após salvar:",
+        JSON.stringify(casesData, null, 2)
+      );
+      console.log(
+        "Vítimas atualizadas após salvar:",
+        JSON.stringify(victimsData, null, 2)
+      );
+
+      resetForm();
     } catch (error) {
       const errorMessage = getErrorMessage(error);
       Alert.alert("Erro", errorMessage);
-      console.error('Erro ao salvar caso:', errorMessage, error);
+      console.error("Erro ao salvar caso:", errorMessage, error);
     }
-  }, [especificacao, descricao, tipoCaso, perito, dataFato, statusCase, selectedVictims, editCaseId, getErrorMessage]);
+  }, [
+    especificacao,
+    descricao,
+    tipoCaso,
+    perito,
+    dataFato,
+    statusCase,
+    selectedVictims,
+    editCaseId,
+    getErrorMessage,
+  ]);
 
   const resetForm = useCallback(() => {
-    console.log('Resetando formulário');
+    console.log("Resetando formulário");
     setEspecificacao("");
     setDescricao("");
     setDataFato("");
@@ -231,36 +456,42 @@ function CasesScreen({ navigation }) {
     setEditCaseId(null);
   }, []);
 
-  const handleEditCase = useCallback((caseItem) => {
-    console.log('Iniciando edição do caso:', JSON.stringify(caseItem, null, 2));
-    try {
-      setEditCaseId(caseItem.id);
-      setEspecificacao(caseItem.title || '');
-      setDescricao(caseItem.description || '');
-      setDataFato(caseItem.dateFact || '');
-      setTipoEvidencia(caseItem.classification || '');
-      setTipoCaso(caseItem.classification || '');
-      setPerito(caseItem.managerId || '');
-      setAssistente(caseItem.solicitante || '');
-      setStatusCase(caseItem.statusCase || '');
-      setArquivo(caseItem.fileName ? { name: caseItem.fileName } : null);
-      const selectedVictimsData = victims.filter((v) => caseItem.vitimas?.includes(v.id) || v.caseId === caseItem.id);
-      setSelectedVictims(selectedVictimsData);
-      console.log('Vítimas selecionadas para edição:', JSON.stringify(selectedVictimsData, null, 2));
-      setModalVisible(false);
-      Alert.alert('Sucesso', 'Caso pronto para edição!');
-    } catch (error) {
-      console.error('Erro ao preparar caso para edição:', error);
-      Alert.alert('Erro', 'Falha ao preparar o caso para edição.');
-    }
-  }, [victims]);
+  const handleEditCase = useCallback(
+    (caseItem) => {
+      console.log("Iniciando edição do caso:", JSON.stringify(caseItem, null, 2));
+      try {
+        setEditCaseId(caseItem.id);
+        setEspecificacao(caseItem.title || "");
+        setDescricao(caseItem.description || "");
+        setDataFato(caseItem.dateFact || "");
+        setTipoEvidencia(caseItem.classification || "");
+        setTipoCaso(caseItem.classification || "");
+        setPerito(caseItem.managerId || "");
+        setAssistente(caseItem.solicitante || "");
+        setStatusCase(caseItem.statusCase || "");
+        setArquivo(caseItem.fileName ? { name: caseItem.fileName } : null);
+        const selectedVictimsData = victims.filter(
+          (v) => caseItem.vitimas?.includes(v.id) || v.caseId === caseItem.id
+        );
+        setSelectedVictims(selectedVictimsData);
+        console.log(
+          "Vítimas selecionadas para edição:",
+          JSON.stringify(selectedVictimsData, null, 2)
+        );
+        setModalVisible(false);
+        Alert.alert("Sucesso", "Caso pronto para edição!");
+      } catch (error) {
+        console.error("Erro ao preparar caso para edição:", error);
+        Alert.alert("Erro", "Falha ao preparar o caso para edição.");
+      }
+    },
+    [victims]
+  );
 
-  const handleDeleteCase = useCallback((caseId) => {
-    console.log('Iniciando exclusão do caso ID:', caseId);
-    Alert.alert(
-      "Confirmar Exclusão",
-      "Tem certeza que deseja desativar este caso?",
-      [
+  const handleDeleteCase = useCallback(
+    (caseId) => {
+      console.log("Iniciando exclusão do caso ID:", caseId);
+      Alert.alert("Confirmar Exclusão", "Tem certeza que deseja desativar este caso?", [
         { text: "Cancelar", style: "cancel" },
         {
           text: "Excluir",
@@ -272,40 +503,41 @@ function CasesScreen({ navigation }) {
               setCases(Array.isArray(casesData) ? casesData : []);
               setFilteredCases(Array.isArray(casesData) ? casesData : []);
               Alert.alert("Sucesso", "Caso desativado com sucesso!");
-              console.log('Caso excluído, ID:', caseId);
+              console.log("Caso excluído, ID:", caseId);
               setModalVisible(false);
             } catch (error) {
               const errorMessage = getErrorMessage(error);
               Alert.alert("Erro", errorMessage);
-              console.error('Erro ao excluir caso:', errorMessage, error);
+              console.error("Erro ao excluir caso:", errorMessage, error);
             }
           },
         },
-      ]
-    );
-  }, [getErrorMessage]);
+      ]);
+    },
+    [getErrorMessage]
+  );
 
-  const handleViewCase = useCallback((caseItem) => {
-    console.log('Visualizando caso:', JSON.stringify(caseItem, null, 2));
-    setSelectedCase(caseItem);
-    setModalVisible(true);
-  }, []);
-
-  const handleGenerateReport = useCallback(() => {
-    if (!selectedCase) return;
-    Alert.alert('Sucesso', 'Laudo gerado com sucesso!');
-    console.log('Laudo gerado para caso ID:', selectedCase.id);
-  }, [selectedCase]);
+  const handleViewCase = useCallback(
+    (caseItem) => {
+      console.log("Visualizando caso:", JSON.stringify(caseItem, null, 2));
+      setSelectedCase(caseItem);
+      setModalVisible(true);
+      fetchReports(caseItem.id);
+      setReportContent("");
+      setIsReportExpanded(false);
+    },
+    [fetchReports]
+  );
 
   const handleRequestExam = useCallback(async () => {
     if (!selectedCase || !requestedExam) {
-      Alert.alert('Erro', 'Selecione um exame para solicitar.');
-      console.log('Erro: Exame não selecionado ou caso inválido');
+      Alert.alert("Erro", "Selecione um exame para solicitar.");
+      console.log("Erro: Exame não selecionado ou caso inválido");
       return;
     }
     try {
-      console.log('Solicitando exame:', requestedExam, 'para caso ID:', selectedCase.id);
-      const content = JSON.parse(selectedCase.content || '{}');
+      console.log("Solicitando exame:", requestedExam, "para caso ID:", selectedCase.id);
+      const content = JSON.parse(selectedCase.content || "{}");
       const updatedContent = {
         ...content,
         requestedExams: [
@@ -325,39 +557,45 @@ function CasesScreen({ navigation }) {
         selectedCase.vitimas,
         JSON.stringify(updatedContent)
       );
-      Alert.alert('Sucesso', `Exame "${requestedExam}" solicitado com sucesso!`);
+      Alert.alert("Sucesso", `Exame "${requestedExam}" solicitado com sucesso!`);
       setRequestedExam("");
       setShowExamMenu(false);
       const casesData = await fetchCases();
       setCases(Array.isArray(casesData) ? casesData : []);
       setFilteredCases(Array.isArray(casesData) ? casesData : []);
-      setSelectedCase({ ...selectedCase, content: JSON.stringify(updatedContent) });
-      console.log('Exame solicitado e caso atualizado:', selectedCase.id);
+      setSelectedCase({
+        ...selectedCase,
+        content: JSON.stringify(updatedContent),
+      });
+      console.log("Exame solicitado e caso atualizado:", selectedCase.id);
     } catch (error) {
       const errorMessage = getErrorMessage(error);
-      Alert.alert('Erro', errorMessage);
-      console.error('Erro ao solicitar exame:', errorMessage, error);
+      Alert.alert("Erro", errorMessage);
+      console.error("Erro ao solicitar exame:", errorMessage, error);
     }
   }, [selectedCase, requestedExam, getErrorMessage]);
 
   const handleAddEvidence = useCallback(() => {
     if (!selectedCase) return;
-    console.log('Navegando para Evidencia, caseId:', selectedCase.id);
-    navigation.navigate('Evidencia', { caseId: selectedCase.id });
+    console.log("Navegando para Evidencia, caseId:", selectedCase.id);
+    navigation.navigate("Evidencia", { caseId: selectedCase.id });
     setModalVisible(false);
   }, [selectedCase, navigation]);
 
   const handleViewEvidences = useCallback(() => {
     if (!selectedCase) return;
-    console.log('Navegando para Evidencia com filtro, caseId:', selectedCase.id);
-    navigation.navigate('Evidencia', { caseId: selectedCase.id, filterByCase: true });
+    console.log("Navegando para Evidencia com filtro, caseId:", selectedCase.id);
+    navigation.navigate("Evidencia", {
+      caseId: selectedCase.id,
+      filterByCase: true,
+    });
     setModalVisible(false);
   }, [selectedCase, navigation]);
 
   const handleSaveDetails = useCallback(async () => {
     if (!selectedCase) return;
     try {
-      console.log('Salvando detalhes do caso ID:', selectedCase.id);
+      console.log("Salvando detalhes do caso ID:", selectedCase.id);
       await updateCase(
         selectedCase.id,
         selectedCase.title,
@@ -369,21 +607,21 @@ function CasesScreen({ navigation }) {
         selectedCase.statusCase,
         selectedCase.vitimas
       );
-      Alert.alert('Sucesso', 'Detalhes do caso atualizados com sucesso!');
+      Alert.alert("Sucesso", "Detalhes do caso atualizados com sucesso!");
       const casesData = await fetchCases();
       setCases(Array.isArray(casesData) ? casesData : []);
       setFilteredCases(Array.isArray(casesData) ? casesData : []);
       setModalVisible(false);
-      console.log('Detalhes do caso salvos:', selectedCase.id);
+      console.log("Detalhes do caso salvos:", selectedCase.id);
     } catch (error) {
       const errorMessage = getErrorMessage(error);
-      Alert.alert('Erro', errorMessage);
-      console.error('Erro ao salvar detalhes:', errorMessage, error);
+      Alert.alert("Erro", errorMessage);
+      console.error("Erro ao salvar detalhes:", errorMessage, error);
     }
   }, [selectedCase, getErrorMessage]);
 
   const getStatusStyle = useCallback((status) => {
-    console.log('Obtendo estilo para status:', status);
+    console.log("Obtendo estilo para status:", status);
     switch (status) {
       case "ANDAMENTO":
         return localStyles.statusBadgeAndamento;
@@ -396,54 +634,137 @@ function CasesScreen({ navigation }) {
     }
   }, []);
 
-  const renderCaseRow = useCallback((caseItem, index) => {
-    const victimsByCaseId = victims.filter(v => v.caseId === caseItem.id);
-    const victimCount = caseItem.vitimas?.length || victimsByCaseId.length || 0;
-    console.log(`Renderizando linha do caso ${caseItem.id}`, {
-      vitimasField: caseItem.vitimas,
-      victimsByCaseId: JSON.stringify(victimsByCaseId, null, 2),
-      victimCount,
-    });
+  const renderCaseRow = useCallback(
+    (caseItem, index) => {
+      const victimsByCaseId = victims.filter((v) => v.caseId === caseItem.id);
+      const victimCount = caseItem.vitimas?.length || victimsByCaseId.length || 0;
+      console.log(`Renderizando linha do caso ${caseItem.id}`, {
+        vitimasField: caseItem.vitimas,
+        victimsByCaseId: JSON.stringify(victimsByCaseId, null, 2),
+        victimCount,
+      });
+      return (
+        <View key={index} style={localStyles.caseRow}>
+          <Text style={localStyles.cell}>{caseItem.id.slice(0, 4)}</Text>
+          <Text style={localStyles.cell}>{caseItem.classification || "-"}</Text>
+          <Text style={localStyles.cell}>
+            {peritos.find((p) => p.id === caseItem.managerId)?.name || "-"}
+          </Text>
+          <Text style={localStyles.cell}>{victimCount} vítima(s)</Text>
+          <View
+            style={[localStyles.cell, localStyles.statusCell, getStatusStyle(caseItem.statusCase)]}
+          >
+            <Text style={localStyles.statusText}>{caseItem.statusCase || "-"}</Text>
+          </View>
+          <View style={[localStyles.cell, localStyles.actionsCell]}>
+            <TouchableOpacity
+              onPress={() => handleViewCase(caseItem)}
+              style={localStyles.actionButton}
+            >
+              <MaterialIcons name="visibility" size={20} color="#2196f3" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleEditCase(caseItem)}
+              style={localStyles.actionButton}
+            >
+              <MaterialIcons name="edit" size={20} color="#6200ee" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDeleteCase(caseItem.id)}
+              style={localStyles.actionButton}
+            >
+              <MaterialIcons name="delete" size={20} color="#f44336" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    },
+    [victims, peritos, getStatusStyle, handleViewCase, handleEditCase, handleDeleteCase]
+  );
+
+  const renderReportModal = () => {
+    console.log("Renderizando reportModal, reportModalVisible:", reportModalVisible);
+    if (!reportModalVisible) return null;
     return (
-      <View key={index} style={localStyles.caseRow}>
-        <Text style={localStyles.cell}>{caseItem.id.slice(0, 4)}</Text>
-        <Text style={localStyles.cell}>{caseItem.classification || '-'}</Text>
-        <Text style={localStyles.cell}>{peritos.find(p => p.id === caseItem.managerId)?.name || '-'}</Text>
-        <Text style={localStyles.cell}>{victimCount} vítima(s)</Text>
-        <View style={[localStyles.cell, localStyles.statusCell, getStatusStyle(caseItem.statusCase)]}>
-          <Text style={localStyles.statusText}>{caseItem.statusCase || '-'}</Text>
-        </View>
-        <View style={[localStyles.cell, localStyles.actionsCell]}>
-          <TouchableOpacity
-            onPress={() => handleViewCase(caseItem)}
-            style={localStyles.actionButton}
-          >
-            <MaterialIcons name="visibility" size={20} color="#2196f3" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleEditCase(caseItem)}
-            style={localStyles.actionButton}
-          >
-            <MaterialIcons name="edit" size={20} color="#6200ee" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => handleDeleteCase(caseItem.id)}
-            style={localStyles.actionButton}
-          >
-            <MaterialIcons name="delete" size={20} color="#f44336" />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Portal>
+        <Modal
+          visible={reportModalVisible}
+          onDismiss={() => setReportModalVisible(false)}
+          contentContainerStyle={modalStyles.modalContainer}
+        >
+          <ScrollView contentContainerStyle={modalStyles.modalContent}>
+            <Text style={modalStyles.modalTitle}>Laudo Pericial</Text>
+            <Text style={modalStyles.label}>Título:</Text>
+            <TextInput
+              value={reportTitle}
+              onChangeText={setReportTitle}
+              mode="outlined"
+              style={modalStyles.input}
+              theme={{ colors: { primary: "#6200ee" } }}
+            />
+            <Text style={modalStyles.label}>Conteúdo:</Text>
+            <View style={modalStyles.markdownContainer}>
+              {reportContent ? (
+                <Markdown style={markdownStyles}>{reportContent}</Markdown>
+              ) : (
+                <Text style={modalStyles.placeholderText}>Nenhum conteúdo disponível</Text>
+              )}
+            </View>
+            {reportError && (
+              <HelperText type="error" style={modalStyles.errorText}>
+                {reportError}
+              </HelperText>
+            )}
+            <View style={modalStyles.buttonContainer}>
+              <Button
+                mode="contained"
+                icon="content-save"
+                onPress={handleSaveReport}
+                style={modalStyles.button}
+                theme={{ colors: { primary: "#6200ee" } }}
+              >
+                Salvar Laudo
+              </Button>
+              <Button
+                mode="contained"
+                icon="content-copy"
+                onPress={handleCopyReport}
+                style={modalStyles.button}
+                theme={{ colors: { primary: "#6200ee" } }}
+              >
+                Copiar Laudo
+              </Button>
+              <Button
+                mode="outlined"
+                onPress={() => setReportModalVisible(false)}
+                style={modalStyles.button}
+                theme={{ colors: { primary: "#6200ee" } }}
+              >
+                Fechar
+              </Button>
+            </View>
+          </ScrollView>
+        </Modal>
+      </Portal>
     );
-  }, [victims, peritos, getStatusStyle, handleViewCase, handleEditCase, handleDeleteCase]);
+  };
 
   const renderModal = () => {
     if (!selectedCase) return null;
     const victimDetails = victims
       .filter((v) => selectedCase.vitimas?.includes(v.id) || v.caseId === selectedCase.id)
-      .map((v) => ({ id: v.id, name: v.name, gender: v.gender || '-' }));
-    const contentData = JSON.parse(selectedCase.content || '{}');
-    console.log('Renderizando modal para caso:', JSON.stringify(selectedCase, null, 2), 'vítimas:', JSON.stringify(victimDetails, null, 2));
+      .map((v) => ({
+        id: v.id,
+        name: v.name,
+        gender: v.sex === "M" ? "Masculino" : v.sex === "F" ? "Feminino" : "-",
+      }));
+    const contentData = JSON.parse(selectedCase.content || "{}");
+    console.log(
+      "Renderizando modal para caso:",
+      JSON.stringify(selectedCase, null, 2),
+      "vítimas:",
+      JSON.stringify(victimDetails, null, 2)
+    );
 
     return (
       <Portal>
@@ -456,12 +777,12 @@ function CasesScreen({ navigation }) {
             <Text style={modalStyles.modalTitle}>Detalhes do Caso</Text>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>ID:</Text>
-              <Text style={modalStyles.value}>{selectedCase.id || '-'}</Text>
+              <Text style={modalStyles.value}>{selectedCase.id || "-"}</Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Título:</Text>
               <TextInput
-                value={selectedCase.title || ''}
+                value={selectedCase.title || ""}
                 onChangeText={(text) => setSelectedCase({ ...selectedCase, title: text })}
                 mode="outlined"
                 style={modalStyles.input}
@@ -470,8 +791,10 @@ function CasesScreen({ navigation }) {
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Descrição:</Text>
               <TextInput
-                value={selectedCase.description || ''}
-                onChangeText={(text) => setSelectedCase({ ...selectedCase, description: text })}
+                value={selectedCase.description || ""}
+                onChangeText={(text) =>
+                  setSelectedCase({ ...selectedCase, description: text })
+                }
                 mode="outlined"
                 multiline
                 style={modalStyles.input}
@@ -480,7 +803,7 @@ function CasesScreen({ navigation }) {
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Data do Fato:</Text>
               <TextInput
-                value={selectedCase.dateFact || ''}
+                value={selectedCase.dateFact || ""}
                 onChangeText={(text) => setSelectedCase({ ...selectedCase, dateFact: text })}
                 mode="outlined"
                 style={modalStyles.input}
@@ -489,30 +812,32 @@ function CasesScreen({ navigation }) {
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Classificação:</Text>
-              <Text style={modalStyles.value}>{selectedCase.classification || '-'}</Text>
+              <Text style={modalStyles.value}>{selectedCase.classification || "-"}</Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Responsável:</Text>
-              <Text style={modalStyles.value}>{peritos.find(p => p.id === selectedCase.managerId)?.name || '-'}</Text>
+              <Text style={modalStyles.value}>
+                {peritos.find((p) => p.id === selectedCase.managerId)?.name || "-"}
+              </Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Solicitante:</Text>
-              <Text style={modalStyles.value}>{selectedCase.solicitante || '-'}</Text>
+              <Text style={modalStyles.value}>{selectedCase.solicitante || "-"}</Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Status:</Text>
-              <Text style={modalStyles.value}>{selectedCase.statusCase || '-'}</Text>
+              <Text style={modalStyles.value}>{selectedCase.statusCase || "-"}</Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Arquivo:</Text>
-              <Text style={modalStyles.value}>{selectedCase.fileName || 'Nenhum'}</Text>
+              <Text style={modalStyles.value}>{selectedCase.fileName || "Nenhum"}</Text>
             </View>
             <View style={modalStyles.detailContainer}>
               <Text style={modalStyles.label}>Vítimas:</Text>
               {victimDetails.length > 0 ? (
                 victimDetails.map((v, index) => (
                   <Text key={index} style={modalStyles.value}>
-                    ID: {v.id}, Nome: {v.name}, Gênero: {v.gender}
+                    ID: {v.id.slice(0, 8)}, Nome: {v.name}, Gênero: {v.gender}
                   </Text>
                 ))
               ) : (
@@ -531,6 +856,51 @@ function CasesScreen({ navigation }) {
                 <Text style={modalStyles.value}>Nenhum exame solicitado</Text>
               )}
             </View>
+            <View style={modalStyles.detailContainer}>
+              <Text style={modalStyles.label}>Relatórios Gerados:</Text>
+              {reports.length > 0 ? (
+                reports.map((report, index) => (
+                  <View key={report.id} style={modalStyles.reportItem}>
+                    <Text style={modalStyles.value}>
+                      {report.title} (Gerado em:{" "}
+                      {new Date(report.createdAt).toLocaleDateString("pt-BR")})
+                    </Text>
+                    <Button
+                      mode="outlined"
+                      onPress={() => handleViewReport(report)}
+                      style={modalStyles.buttonSmall}
+                    >
+                      Ver
+                    </Button>
+                  </View>
+                ))
+              ) : (
+                <Text style={modalStyles.value}>Nenhum relatório gerado</Text>
+              )}
+            </View>
+            <View style={modalStyles.detailContainer}>
+              <View style={modalStyles.reportHeader}>
+                <Text style={modalStyles.label}>Laudo Gerado:</Text>
+                <TouchableOpacity onPress={() => setIsReportExpanded(!isReportExpanded)}>
+                  <MaterialIcons
+                    name={isReportExpanded ? "expand-less" : "expand-more"}
+                    size={24}
+                    color="#6200ee"
+                  />
+                </TouchableOpacity>
+              </View>
+              {isReportExpanded && (
+                <View style={modalStyles.markdownContainer}>
+                  {reportContent ? (
+                    <Markdown style={markdownStyles}>{reportContent}</Markdown>
+                  ) : (
+                    <Text style={modalStyles.placeholderText}>
+                      Nenhum laudo gerado. Clique em "Gerar Laudo" para criar um.
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
 
             <View style={modalStyles.buttonContainer}>
               <Button
@@ -538,9 +908,15 @@ function CasesScreen({ navigation }) {
                 icon="file-document"
                 onPress={handleGenerateReport}
                 style={modalStyles.button}
+                disabled={isGeneratingReport}
               >
-                Gerar Laudo
+                {isGeneratingReport ? "Gerando Laudo..." : "Gerar Laudo"}
               </Button>
+              {reportError && (
+                <HelperText type="error" style={modalStyles.errorText}>
+                  {reportError}
+                </HelperText>
+              )}
               <View style={modalStyles.examRequestContainer}>
                 <Menu
                   visible={showExamMenu}
@@ -560,7 +936,7 @@ function CasesScreen({ navigation }) {
                       onPress={() => {
                         setRequestedExam(option);
                         setShowExamMenu(false);
-                        console.log('Exame selecionado:', option);
+                        console.log("Exame selecionado:", option);
                       }}
                       title={option}
                     />
@@ -574,53 +950,55 @@ function CasesScreen({ navigation }) {
                   Solicitar Exame
                 </Button>
               </View>
-              <Button
-                mode="contained"
-                icon="plus"
-                onPress={handleAddEvidence}
-                style={modalStyles.button}
-              >
-                Adicionar Evidência
-              </Button>
-              <Button
-                mode="contained"
-                icon="view-list"
-                onPress={handleViewEvidences}
-                style={modalStyles.button}
-              >
-                Ver Evidências
-              </Button>
-              <Button
-                mode="contained"
-                icon="edit"
-                onPress={() => handleEditCase(selectedCase)}
-                style={modalStyles.button}
-              >
-                Editar
-              </Button>
-              <Button
-                mode="contained"
-                icon="delete"
-                onPress={() => handleDeleteCase(selectedCase.id)}
-                style={modalStyles.button}
-              >
-                Excluir
-              </Button>
-              <Button
-                mode="contained"
-                icon="content-save"
-                onPress={handleSaveDetails}
-                style={modalStyles.button}
-              >
-                Salvar
-              </Button>
-              <Button
-                mode="outlined"
-                onPress={() => setModalVisible(false)}
-                style={modalStyles.button}
-              >
-                Fechar
-              </Button>
+              <View style={modalStyles.menuControles}>
+                <Button
+                  mode="contained"
+                  icon="plus"
+                  onPress={handleAddEvidence}
+                  style={modalStyles.button}
+                >
+                  Adicionar Evidência
+                </Button>
+                <Button
+                  mode="contained"
+                  icon="view-list"
+                  onPress={handleViewEvidences}
+                  style={modalStyles.button}
+                >
+                  Ver Evidências
+                </Button>
+                <Button
+                  mode="contained"
+                  icon="edit"
+                  onPress={() => handleEditCase(selectedCase)}
+                  style={modalStyles.button}
+                >
+                  Editar
+                </Button>
+                <Button
+                  mode="contained"
+                  icon="delete"
+                  onPress={() => handleDeleteCase(selectedCase.id)}
+                  style={modalStyles.button}
+                >
+                  Excluir
+                </Button>
+                <Button
+                  mode="contained"
+                  icon="content-save"
+                  onPress={handleSaveDetails}
+                  style={modalStyles.button}
+                >
+                  Salvar
+                </Button>
+                <Button
+                  mode="outlined"
+                  onPress={() => setModalVisible(false)}
+                  style={modalStyles.button}
+                >
+                  Fechar
+                </Button>
+              </View>
             </View>
           </ScrollView>
         </Modal>
@@ -629,15 +1007,15 @@ function CasesScreen({ navigation }) {
   };
 
   if (isLoading) {
-    console.log('Renderizando estado de carregamento');
+    console.log("Renderizando estado de carregamento");
     return <Text style={styles.loading}>Carregando...</Text>;
   }
 
-  console.log('Renderizando CasesScreen com dados:', {
+  console.log("Renderizando CasesScreen com dados:", {
     cases: JSON.stringify(cases, null, 2),
     victims: JSON.stringify(victims, null, 2),
     userRole,
-    userName
+    userName,
   });
 
   return (
@@ -648,7 +1026,7 @@ function CasesScreen({ navigation }) {
           size={35}
           icon="menu"
           onPress={() => {
-            console.log('Abrindo drawer');
+            console.log("Abrindo drawer");
             navigation.toggleDrawer();
           }}
         />
@@ -661,7 +1039,7 @@ function CasesScreen({ navigation }) {
       <ScrollView style={styles.main}>
         {error && (
           <Text style={stylesCases.error}>
-            {console.log('Exibindo erro:', error)}
+            {console.log("Exibindo erro:", error)}
             {error}
           </Text>
         )}
@@ -675,7 +1053,9 @@ function CasesScreen({ navigation }) {
         />
 
         <View style={stylesCases.CadastrarCasos}>
-          <Text style={stylesCases.title}>{editCaseId ? "Editar Caso" : "Cadastrar Caso"}</Text>
+          <Text style={stylesCases.title}>
+            {editCaseId ? "Editar Caso" : "Cadastrar Caso"}
+          </Text>
 
           <TextInput
             label="Título*"
@@ -700,6 +1080,7 @@ function CasesScreen({ navigation }) {
             placeholder="YYYY-MM-DD"
             style={stylesCases.input}
           />
+
           <Menu
             visible={showTipoEvidencia}
             onDismiss={() => setShowTipoEvidencia(false)}
@@ -718,9 +1099,10 @@ function CasesScreen({ navigation }) {
             />
             <Menu.Item
               onPress={() => setTipoEvidencia("Post Mortem")}
-              title="Post mortem"
+              title="Post Mortem"
             />
           </Menu>
+
           <Menu
             visible={showTipoCaso}
             onDismiss={() => setShowTipoCaso(false)}
@@ -735,8 +1117,12 @@ function CasesScreen({ navigation }) {
           >
             <Menu.Item onPress={() => setTipoCaso("CRIMINAL")} title="Exame Criminal" />
             <Menu.Item onPress={() => setTipoCaso("ACIDENTE")} title="Acidente" />
-            <Menu.Item onPress={() => setTipoCaso("IDENTIFICACAO")} title="Identificação" />
+            <Menu.Item
+              onPress={() => setTipoCaso("IDENTIFICACAO")}
+              title="Identificação"
+            />
           </Menu>
+
           <Menu
             visible={showPerito}
             onDismiss={() => setShowPerito(false)}
@@ -745,7 +1131,9 @@ function CasesScreen({ navigation }) {
                 onPress={() => setShowPerito(true)}
                 style={stylesCases.menuInput}
               >
-                <Text>{peritos.find(p => p.id === perito)?.name || "Perito Responsável*"}</Text>
+                <Text>
+                  {peritos.find((p) => p.id === perito)?.name || "Perito Responsável*"}
+                </Text>
               </TouchableRipple>
             }
           >
@@ -757,6 +1145,7 @@ function CasesScreen({ navigation }) {
               />
             ))}
           </Menu>
+
           <Menu
             visible={showAssistente}
             onDismiss={() => setShowAssistente(false)}
@@ -765,13 +1154,17 @@ function CasesScreen({ navigation }) {
                 onPress={() => setShowAssistente(true)}
                 style={stylesCases.menuInput}
               >
-                <Text>{assistente || "Solicitante"}</Text>
+                <Text>{assistente || "Assistente*"}</Text>
               </TouchableRipple>
             }
           >
             <Menu.Item onPress={() => setAssistente("")} title="Nenhum" />
-            <Menu.Item onPress={() => setAssistente("João Assistente")} title="João Assistente" />
+            <Menu.Item
+              onPress={() => setAssistente("João Assistente")}
+              title="João Assistente"
+            />
           </Menu>
+
           <Menu
             visible={showStatusCase}
             onDismiss={() => setShowStatusCase(false)}
@@ -780,7 +1173,7 @@ function CasesScreen({ navigation }) {
                 onPress={() => setShowStatusCase(true)}
                 style={stylesCases.menuInput}
               >
-                <Text>{statusCase || "Status*"}</Text>
+                <Text>{statusCase || "Status"}</Text>
               </TouchableRipple>
             }
           >
@@ -788,6 +1181,7 @@ function CasesScreen({ navigation }) {
             <Menu.Item onPress={() => setStatusCase("FINALIZADO")} title="Finalizado" />
             <Menu.Item onPress={() => setStatusCase("ARQUIVADO")} title="Arquivado" />
           </Menu>
+
           <Menu
             visible={showVictimMenu}
             onDismiss={() => setShowVictimMenu(false)}
@@ -796,7 +1190,11 @@ function CasesScreen({ navigation }) {
                 onPress={() => setShowVictimMenu(true)}
                 style={stylesCases.menuInput}
               >
-                <Text>{selectedVictims.length > 0 ? `${selectedVictims.length} vítima(s) selecionada(s)` : "Selecionar Vítimas*"}</Text>
+                <Text>
+                  {selectedVictims.length > 0
+                    ? `${selectedVictims.length} vítima(s) selecionada(s)`
+                    : "Selecionar Vítimas*"}
+                </Text>
               </TouchableOpacity>
             }
           >
@@ -808,9 +1206,10 @@ function CasesScreen({ navigation }) {
               />
             ))}
           </Menu>
+
           {selectedVictims.length > 0 && (
-            <View style={stylesCases.sectionVictimsContainer}>
-              <Text style={stylesCases.selectedVictimsTitle}>Vítimas Selecionadas:</Text>
+            <View style={stylesCases.sectionVictims}>
+              <Text style={stylesCases.sectionVictimsTitle}>Vítimas Selecionadas:</Text>
               {selectedVictims.map((victim) => (
                 <View key={victim.id} style={stylesCases.selectedVictim}>
                   <Text>{`${victim.name} (${victim.id.slice(0, 4)})`}</Text>
@@ -821,6 +1220,7 @@ function CasesScreen({ navigation }) {
               ))}
             </View>
           )}
+
           <Menu
             visible={showExame}
             onDismiss={() => setShowExame(false)}
@@ -829,7 +1229,7 @@ function CasesScreen({ navigation }) {
                 onPress={() => setShowExame(true)}
                 style={stylesCases.menuInput}
               >
-                <Text>{exame || "Anexar exames"}</Text>
+                <Text>{exame || "Exame"}</Text>
               </TouchableRipple>
             }
           >
@@ -842,6 +1242,7 @@ function CasesScreen({ navigation }) {
               title="Exame radiográfico"
             />
           </Menu>
+
           <Button
             icon="file"
             mode="outlined"
@@ -850,54 +1251,52 @@ function CasesScreen({ navigation }) {
           >
             Escolher arquivo
           </Button>
-          {arquivo && <HelperText type="info">{arquivo.name}</HelperText>}
+          {arquivo && <Text style={stylesCases.infoText}>{arquivo.name}</Text>}
+
           <Button
             icon="check"
             mode="contained"
-            style={stylesCases.botaoSalvar}
             onPress={handleSaveCase}
+            style={stylesCases.botaoSalvar}
           >
             {editCaseId ? "Salvar Alterações" : "Salvar"}
           </Button>
+
           {editCaseId && (
-            <Button
-              mode="outlined"
-              style={stylesCases.botaoCancelar}
-              onPress={resetForm}
-            >
+            <Button mode="outlined" style={stylesCases.botao} onPress={resetForm}>
               Cancelar
             </Button>
           )}
         </View>
 
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Casos Recentes</Text>
+        <View style={localStyles.section}>
+          <Text style={localStyles.sectionTitle}>Casos Recentes</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-            <View style={styles.tableContainer}>
-              <View style={stylesVictims.tableHeader}>
-                <Text style={stylesVictims.headerText}>Código</Text>
-                <Text style={stylesVictims.headerText}>Tipo</Text>
-                <Text style={stylesVictims.headerText}>Responsável</Text>
-                <Text style={stylesVictims.headerText}>Vítimas</Text>
-                <Text style={stylesVictims.headerText}>Status</Text>
-                <Text style={stylesVictims.headerText}>Ações</Text>
+            <View style={localStyles.tableContainer}>
+              <View style={localStyles.tableHeader}>
+                <Text style={localStyles.headerText}>Código</Text>
+                <Text style={localStyles.headerText}>Tipo</Text>
+                <Text style={localStyles.headerText}>Responsável</Text>
+                <Text style={localStyles.headerText}>Vítimas</Text>
+                <Text style={localStyles.headerText}>Status</Text>
+                <Text style={localStyles.headerText}>Ações</Text>
               </View>
               {filteredCases.slice(0, 3).map(renderCaseRow)}
             </View>
           </ScrollView>
         </View>
 
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Todos os Casos</Text>
+        <View style={localStyles.section}>
+          <Text style={localStyles.sectionTitle}>Todos os Casos</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-            <View style={styles.tableContainer}>
-              <View style={stylesVictims.tableHeader}>
-                <Text style={stylesVictims.headerText}>Código</Text>
-                <Text style={stylesVictims.headerText}>Tipo</Text>
-                <Text style={stylesVictims.headerText}>Responsável</Text>
-                <Text style={stylesVictims.headerText}>Vítimas</Text>
-                <Text style={stylesVictims.headerText}>Status</Text>
-                <Text style={stylesVictims.headerText}>Ações</Text>
+            <View style={localStyles.tableContainer}>
+              <View style={localStyles.tableHeader}>
+                <Text style={localStyles.headerText}>Código</Text>
+                <Text style={localStyles.headerText}>Tipo</Text>
+                <Text style={localStyles.headerText}>Responsável</Text>
+                <Text style={localStyles.headerText}>Vítimas</Text>
+                <Text style={localStyles.headerText}>Status</Text>
+                <Text style={localStyles.headerText}>Ações</Text>
               </View>
               {filteredCases.map(renderCaseRow)}
             </View>
@@ -906,6 +1305,7 @@ function CasesScreen({ navigation }) {
       </ScrollView>
 
       {renderModal()}
+      {renderReportModal()}
 
       <View style={stylesCases.menuNav}>
         <View style={stylesCases.menuNavi}>
@@ -920,123 +1320,229 @@ function CasesScreen({ navigation }) {
 
 const modalStyles = StyleSheet.create({
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     padding: 20,
     margin: 20,
     borderRadius: 8,
-    maxHeight: '80%',
+    elevation: 5,
+    maxHeight: "90%",
+  },
+  modalContent: {
+    paddingBottom: 20,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 20,
-    color: '#333',
-  },
-  detailContainer: {
-    marginBottom: 10,
+    textAlign: "center",
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+    marginLeft: 10,
   },
   value: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 14,
+    color: "#666",
     marginTop: 5,
+    marginLeft: 10,
   },
   input: {
     marginTop: 5,
+    marginBottom: 10,
+    backgroundColor: "#fff",
+    marginHorizontal: 10,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
     marginTop: 20,
+    marginHorizontal: 10,
   },
   button: {
-    flex: 1,
     margin: 5,
-    minWidth: '45%',
+    minWidth: 120,
+    borderRadius: 8,
   },
   examRequestContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: 10,
+    marginLeft: 10,
+  },
+  menuControles: {
+    width: "100%",
     marginBottom: 10,
   },
   menuInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: "#ddd",
     borderRadius: 4,
     padding: 10,
     marginRight: 10,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
+  },
+  errorText: {
+    width: "100%",
+    textAlign: "center",
+    color: "#d32f2f",
+    marginVertical: 10,
+  },
+  markdownContainer: {
+    backgroundColor: "#f9f9f9",
+    padding: 15,
+    borderRadius: 10,
+    marginHorizontal: 10,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: "#ddd",
+  },
+  placeholderText: {
+    fontSize: 14,
+    color: "#666",
+    marginVertical: 5,
+  },
+  reportItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 5,
+  },
+  buttonSmall: {
+    marginLeft: 10,
+    marginTop: 5,
+    width: 80,
+  },
+  reportHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 10,
+    marginLeft: 10,
   },
 });
 
-const localStyles = StyleSheet.create({
-  caseRow: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    paddingVertical: 10,
+const markdownStyles = {
+  body: {
+    fontSize: 14,
+    color: "#333",
+    lineHeight: 22,
+  },
+  heading1: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#6200ee",
+    marginVertical: 10,
+  },
+  heading2: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginVertical: 8,
+  },
+  paragraph: {
     marginVertical: 5,
-    borderRadius: 8,
+  },
+  list_item: {
+    marginVertical: 3,
+  },
+  bullet_list: {
+    marginVertical: 5,
+  },
+  bullet_list_icon: {
+    color: "#6200ee",
+    fontSize: 14,
+  },
+  strong: {
+    fontWeight: "bold",
+  },
+  em: {
+    fontStyle: "italic",
+  },
+};
+
+const localStyles = StyleSheet.create({
+  section: {
+    marginVertical: 15,
+    paddingHorizontal: 10,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  tableContainer: {
+    minWidth: 600,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: "#f5f5f5",
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderBottomWidth: 1,
+    borderColor: "#ddd",
+  },
+  headerText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#333",
+  },
+  caseRow: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginVertical: 2,
+    borderRadius: 6,
     elevation: 1,
   },
   cell: {
     flex: 1,
-    paddingHorizontal: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    textAlign: 'center',
-    color: '#333',
+    fontSize: 14,
+    textAlign: "center",
+    color: "#333",
+    paddingVertical: 5,
   },
   statusCell: {
     flex: 1,
-    padding: 5,
+    paddingVertical: 5,
     borderRadius: 4,
-    marginVertical: 5,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   actionsCell: {
-    flex: 0.8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  caseCodeText: {
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  caseTypeText: {
-    color: '#333',
-  },
-  caseResponsibleText: {
-    color: '#666',
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
   },
   statusBadgeAndamento: {
-    backgroundColor: '#4caf50',
+    backgroundColor: "#4caf50",
   },
   statusBadgeFinalizado: {
-    backgroundColor: '#2196f3',
+    backgroundColor: "#2196f3",
   },
   statusBadgeArquivado: {
-    backgroundColor: '#f44336',
+    backgroundColor: "#f44336",
   },
   statusBadgeDefault: {
-    backgroundColor: '#999',
+    backgroundColor: "#999",
   },
   statusText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   actionButton: {
-    padding: 5,
-    marginHorizontal: 5,
+    paddingHorizontal: 10,
   },
 });
 
