@@ -21,41 +21,31 @@ const Home = () => {
   const [error, setError] = useState(null);
   const navigation = useNavigation();
 
-  useEffect(() => {
-    const updateGreeting = () => {
-      const hour = new Date().getHours();
-      if (hour >= 5 && hour < 12) {
-        setGreeting('Bom dia');
-      } else if (hour >= 12 && hour < 18) {
-        setGreeting('Boa tarde');
-      } else {
-        setGreeting('Boa noite');
-      }
-      console.log('Saudação atualizada:', greeting);
-    };
+  const updateGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      setGreeting('Bom dia');
+    } else if (hour >= 12 && hour < 18) {
+      setGreeting('Boa tarde');
+    } else {
+      setGreeting('Boa noite');
+    }
+    console.log('Saudação atualizada:', greeting);
+  };
 
-    updateGreeting();
-    const intervalId = setInterval(updateGreeting, 60000);
-    return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
   const fetchData = async () => {
-    setIsLoading(true);
+    console.log('Iniciando fetchData');
     try {
-      // Carregar userInfo e token        
-      console.log('Iniciando carregamento de userInfo e token');
-      const userInfo = await AsyncStorage.getItem('userInfo');
       const token = await AsyncStorage.getItem('accessToken');
-
       if (!token) {
         console.log('Token não encontrado. Redirecionando para login.');
         Alert.alert('Sessão expirada', 'Faça login novamente.', [
-          { text: 'OK', onPress: () => navigation.replace('Login') }
+          { text: 'OK', onPress: () => navigation.replace('Login') },
         ]);
         return;
       }
 
+      const userInfo = await AsyncStorage.getItem('userInfo');
       let parsedUserInfo = {};
       try {
         if (userInfo) {
@@ -71,7 +61,6 @@ const Home = () => {
       setDoctorName(parsedUserInfo?.name || 'Usuário');
       console.log('DoctorName definido:', parsedUserInfo?.name || 'Usuário');
 
-      // Buscar dados
       console.log('Iniciando chamadas de API: fetchCases, fetchEvidences, fetchNotifications');
       const [cases, evidences, notificationsData] = await Promise.all([
         fetchCases(token),
@@ -82,7 +71,6 @@ const Home = () => {
       console.log('Dados recebidos - Evidências:', evidences);
       console.log('Dados recebidos - Notificações:', notificationsData);
 
-      // Calcular estatísticas
       const statusCounter = {
         ANDAMENTO: 0,
         FINALIZADO: 0,
@@ -100,11 +88,9 @@ const Home = () => {
         arquivados: statusCounter.ARQUIVADO,
       });
 
-      // Atualizar notificações
       setNotifications(notificationsData.slice(0, 5));
       console.log('Notificações limitadas a 5:', notificationsData.slice(0, 5));
 
-      // Criar atividades recentes
       const activities = [
         ...cases
           .filter(c => c.createdAt)
@@ -123,8 +109,8 @@ const Home = () => {
             color: '#3B82F6',
           })),
       ]
-      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-      .slice(0, 3);
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 3);
       setRecentActivities(activities);
       console.log('Atividades recentes limitadas a 3:', activities);
 
@@ -133,23 +119,29 @@ const Home = () => {
       const errorMessage = err.message || 'Erro ao carregar dados';
       console.error('Erro em fetchData:', errorMessage, err);
       setError(errorMessage);
-      setStats({ andamento: 0, finalizados: 0, arquivados: 0 });
-      setNotifications([]);
-      setRecentActivities([]);
       if (errorMessage.includes('Usuário não autenticado')) {
         console.log('Erro de autenticação detectado. Redirecionando para login.');
         Alert.alert('Sessão expirada', 'Faça login novamente.', [
           { text: 'OK', onPress: () => navigation.replace('Login') },
         ]);
       }
-    } finally {
-      setIsLoading(false);
-      console.log('Carregamento concluído, isLoading:', false);
     }
   };
 
-  fetchData();
-}, [navigation]);
+  useEffect(() => {
+    updateGreeting();
+    const greetingIntervalId = setInterval(updateGreeting, 60000);
+
+    setIsLoading(true);
+    fetchData().finally(() => setIsLoading(false));
+    const dataIntervalId = setInterval(fetchData, 30000);
+
+    return () => {
+      clearInterval(greetingIntervalId);
+      clearInterval(dataIntervalId);
+      console.log('Intervalos de saudação e dados limpos');
+    };
+  }, [navigation]);
 
   const quickActions = [
     {
@@ -237,7 +229,10 @@ const Home = () => {
           <Text style={styles.title}>{greeting}, {doctorName}!</Text>
           <Text style={styles.subtitle}>
             {new Date().toLocaleDateString('pt-BR', {
-              weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
             })}
           </Text>
         </View>
@@ -347,7 +342,9 @@ const Home = () => {
             recentActivities.map((activity) => (
               <View key={activity.id} style={styles.recentItem}>
                 <View style={[styles.dot, { backgroundColor: activity.color }]} />
-                <Text style={styles.recentText}>{activity.text} - {formatTimestamp(activity.timestamp)}</Text>
+                <Text style={styles.recentText}>
+                  {activity.text} - {formatTimestamp(activity.timestamp)}
+                </Text>
                 {console.log('Atividade recente renderizada:', activity)}
               </View>
             ))
@@ -356,6 +353,6 @@ const Home = () => {
       </View>
     </ScrollView>
   );
+};
 
-}
 export default Home;

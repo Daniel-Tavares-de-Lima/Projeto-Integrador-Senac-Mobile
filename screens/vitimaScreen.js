@@ -667,8 +667,11 @@ const localStyles = StyleSheet.create({
     backgroundColor: '#f44336',
   },
   statusDefault: {
-    backgroundColor: '#999',
+    backgroundColor: '#1fab00',
+    borderRadius: 15,
+    height: 20,
   },
+  
   statusText: {
     color: '#fff',
     fontSize: 12,
