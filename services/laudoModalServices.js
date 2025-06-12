@@ -1,10 +1,4 @@
-
-
-
-
-
 // import AsyncStorage from '@react-native-async-storage/async-storage';
-
 
 // const GEMINI_API_KEY = "AIzaSyBwX_CAXvq9_sF-RlZEn_2k7lEpGN8BAkY";
 
@@ -35,8 +29,8 @@
 //       - Data de Coleta: ${new Date(evidence.dateCollection).toLocaleDateString('pt-BR')}
 //       - Tipo de Exame: ${contentData.tipoExames || 'Não informado'}
 //       - Caso ID: ${evidence.caseId || 'Não informado'}
-//       - Localização: ${contentData.latitude && contentData.longitude 
-//         ? `Latitude ${contentData.latitude}, Longitude ${contentData.longitude}` 
+//       - Localização: ${contentData.latitude && contentData.longitude
+//         ? `Latitude ${contentData.latitude}, Longitude ${contentData.longitude}`
 //         : 'Não informada'}
 //       - Imagem: ${evidence.imageURL ? 'Imagem disponível' : 'Sem imagem'}
 
@@ -106,18 +100,20 @@
 //   }
 // };
 
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const GEM_KEY = 'SUA_API_KEY'; // Substitua pela sua chave
+const GEM_KEY = "AIzaSyBwX_CAXvq9_sF-RlZEn_2k7lEpGN8BAkY";
 
 export async function generateEvidenceReport(evidence, caseInfo) {
   try {
-    const token = await AsyncStorage.getItem('accessToken');
-    if (!token) throw new Error('Usuário não autenticado.');
+    const token = await AsyncStorage.getItem("accessToken");
+    if (!token) throw new Error("Usuário não autenticado.");
 
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(evidence?.caseId);
-    if (!isValidUUID) throw new Error('caseId inválido para a evidência.');
+    const isValidUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        evidence?.caseId
+      );
+    if (!isValidUUID) throw new Error("caseId inválido para a evidência.");
 
     const contentData = parseContent(evidence.content);
 
@@ -125,19 +121,26 @@ export async function generateEvidenceReport(evidence, caseInfo) {
       Você é um perito forense especializado. Gere um laudo pericial detalhado em português para a evidência fornecida, semelhante a um relatório de caso. Estruture o laudo em Markdown com as seções: **Introdução**, **Descrição da Evidência**, **Metodologia**, **Análise**, **Conclusões** e **Assinatura**. Use linguagem técnica, objetiva e profissional.
 
       **Informações da Evidência**:
-      - ID: ${evidence.id || 'Não informado'}
-      - Nome: ${contentData.nome || 'Não informado'}
-      - Tipo: ${evidence.type || 'Não informado'}
-      - Data de Coleta: ${evidence.dateCollection ? new Date(evidence.dateCollection).toLocaleDateString('pt-BR') : 'Não informado'}
-      - Tipo de Exame: ${contentData.tipoExames || 'Não informado'}
-      - Caso ID: ${evidence.caseId || 'Não informado'}
-      - Localização: ${contentData.latitude && contentData.longitude ? 
-        `Latitude ${contentData.latitude}, Longitude ${contentData.longitude}` : 'Não informada'}
-      - Descrição Visual: ${contentData.descriptionVisual || 'Não informado'}
+      - ID: ${evidence.id || "Não informado"}
+      - Nome: ${contentData.nome || "Não informado"}
+      - Tipo: ${evidence.type || "Não informado"}
+      - Data de Coleta: ${
+        evidence.dateCollection
+          ? new Date(evidence.dateCollection).toLocaleDateString("pt-BR")
+          : "Não informado"
+      }
+      - Tipo de Exame: ${contentData.tipoExames || "Não informado"}
+      - Caso ID: ${evidence.caseId || "Não informado"}
+      - Localização: ${
+        contentData.latitude && contentData.longitude
+          ? `Latitude ${contentData.latitude}, Longitude ${contentData.longitude}`
+          : "Não informada"
+      }
+      - Descrição Visual: ${contentData.descriptionVisual || "Não informado"}
 
       **Informações do Caso**:
-      - Título: ${caseInfo.title || 'Não informado'}
-      - Descrição: ${caseInfo.description || 'Não informado'}
+      - Título: ${caseInfo.title || "Não informado"}
+      - Descrição: ${caseInfo.description || "Não informado"}
 
       **Instruções**:
       - Na **Introdução**, contextualize o objetivo do laudo.
@@ -152,9 +155,9 @@ export async function generateEvidenceReport(evidence, caseInfo) {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEM_KEY}`,
       {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }], body }],
@@ -164,31 +167,46 @@ export async function generateEvidenceReport(evidence, caseInfo) {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error?.message || 'Erro ao chamar a API do Gemini');
+      throw new Error(
+        errorData.error?.message || "Erro ao chamar a API do Gemini"
+      );
     }
 
     const data = await response.json();
     const generatedText = data.candidates[0].content.parts[0].text;
 
-    await saveEvidenceReport(token, evidence.id, evidence.caseId, generatedText);
+    await saveEvidenceReport(
+      token,
+      evidence.id,
+      evidence.caseId,
+      generatedText
+    );
 
     return { report: generatedText };
   } catch (error) {
-    console.error('Erro ao gerar laudo:', error);
+    console.error("Erro ao gerar laudo:", error);
     throw error;
   }
 }
 
-export async function saveEvidenceReport(token, evidenceId, caseId, reportContent) {
+export async function saveEvidenceReport(
+  token,
+  evidenceId,
+  caseId,
+  reportContent
+) {
   try {
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(caseId);
-    if (!isValidUUID) throw new Error('caseId inválido para o relatório.');
+    const isValidUUID =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        caseId
+      );
+    if (!isValidUUID) throw new Error("caseId inválido para o relatório.");
 
-    const response = await fetch('https://pi3p.onrender.com/reports', {
-      method: 'POST',
+    const response = await fetch("https://pi3p.onrender.com/reports", {
+      method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
         evidenceId,
@@ -199,17 +217,17 @@ export async function saveEvidenceReport(token, evidenceId, caseId, reportConten
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Erro ao salvar laudo');
+    if (!response.ok) throw new Error(data.message || "Erro ao salvar laudo");
     return data;
   } catch (error) {
-    console.error('Erro ao salvar laudo:', error);
+    console.error("Erro ao salvar laudo:", error);
     throw error;
   }
 }
 
 function parseContent(content) {
   try {
-    return JSON.parse(content || '{}');
+    return JSON.parse(content || "{}");
   } catch {
     return {};
   }

@@ -62,6 +62,7 @@ const styles = StyleSheet.create({
   },
   button: {
     marginTop: 10,
+    backgroundColor: '#3A5BA0'
   },
   error: {
     color: 'red',
