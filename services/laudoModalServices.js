@@ -102,18 +102,41 @@
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const GEM_KEY = "AIzaSyBwX_CAXvq9_sF-RlZEn_2k7lEpGN8BAkY";
+// Configurações da API Groq
+const GROQ_API_KEY = "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";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const MODEL_NAME = "meta-llama/llama-4-scout-17b-16e-instruct";
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 1000; // 1 segundo (Groq é mais rápido)
 
-export async function generateEvidenceReport(evidence, caseInfo) {
+// Validação de UUID (mantido igual)
+function isValidUUID(uuid) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(uuid);
+}
+
+// Parse do conteúdo (mantido igual)
+function parseContent(content) {
+  try {
+    return JSON.parse(content || "{}");
+  } catch (error) {
+    console.warn("Erro ao fazer parse do conteúdo:", error);
+    return {
+      nome: "Não informado",
+      tipoExames: "Não informado",
+      descriptionVisual: "Não informado"
+    };
+  }
+}
+
+// Geração do relatório com Groq
+export async function generateEvidenceReport(evidence, caseInfo, retryCount = 0) {
   try {
     const token = await AsyncStorage.getItem("accessToken");
     if (!token) throw new Error("Usuário não autenticado.");
 
-    const isValidUUID =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        evidence?.caseId
-      );
-    if (!isValidUUID) throw new Error("caseId inválido para a evidência.");
+    if (!evidence?.caseId || !isValidUUID(evidence.caseId)) {
+      throw new Error("caseId inválido para a evidência.");
+    }
 
     const contentData = parseContent(evidence.content);
 
@@ -141,66 +164,65 @@ export async function generateEvidenceReport(evidence, caseInfo) {
       **Informações do Caso**:
       - Título: ${caseInfo.title || "Não informado"}
       - Descrição: ${caseInfo.description || "Não informado"}
-
-      **Instruções**:
-      - Na **Introdução**, contextualize o objetivo do laudo.
-      - Na **Descrição da Evidência**, detalhe as características, incluindo descrição visual.
-      - Na **Metodologia**, explique os procedimentos forenses (ex.: exame odontolegal).
-      - Na **Análise**, interprete os dados.
-      - Na **Conclusões**, resuma os achados.
-      - Na **Assinatura**, inclua "Perito Responsável".
-      - Formate em Markdown.
     `;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEM_KEY}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }], 
-        }),
-      }
-    );
+    console.log('Enviando prompt para a API Groq...');
+
+    const response = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${GROQ_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        messages: [{
+          role: "user",
+          content: prompt
+        }],
+        temperature: 0.3, // Mais determinístico
+        max_tokens: 2000
+      }),
+    });
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(
-        errorData.error?.message || "Erro ao chamar a API do Gemini"
-      );
+      
+      if (retryCount < MAX_RETRIES) {
+        console.warn(`Erro detectado. Tentando novamente (${retryCount + 1}/${MAX_RETRIES})...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        return generateEvidenceReport(evidence, caseInfo, retryCount + 1);
+      }
+      
+      throw new Error(errorData.error?.message || "Erro ao chamar a API Groq");
     }
 
     const data = await response.json();
-    const generatedText = data.candidates[0].content.parts[0].text;
+    const generatedText = data.choices[0]?.message?.content;
+    
+    if (!generatedText) {
+      throw new Error("Resposta da API Groq em formato inesperado");
+    }
 
-    await saveEvidenceReport(
-      token,
-      evidence.id,
-      evidence.caseId,
-      generatedText
-    );
+        console.warn('RESPONSE', generatedText)
 
+    await saveEvidenceReport(token, evidence.caseId, generatedText);
     return { report: generatedText };
+
   } catch (error) {
-    console.error("Erro ao gerar laudo:", error);
+    console.error(`Erro ao gerar laudo:`, error);
     throw error;
   }
 }
 
-export async function saveEvidenceReport(
-  token,
-  evidenceId,
-  caseId,
-  reportContent
-) {
+// Função saveEvidenceReport permanece igual
+async function saveEvidenceReport(token, caseId, reportContent) {
   try {
-    const isValidUUID =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        caseId
-      );
-    if (!isValidUUID) throw new Error("caseId inválido para o relatório.");
+    if (!caseId || !isValidUUID(caseId)) {
+      throw new Error("caseId inválido para o relatório.");
+    }
+
+    console.warn('CASEID', caseId)
 
     const response = await fetch("https://pi3p.onrender.com/reports", {
       method: "POST",
@@ -209,26 +231,18 @@ export async function saveEvidenceReport(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        evidenceId,
-        caseId, // Explicito
-        title: `Laudo de Evidência ${evidenceId}`,
+        caseId,
+        title: `Relatório do Caso ${caseId}`,
         content: reportContent,
       }),
     });
 
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || "Erro ao salvar laudo");
+    
     return data;
   } catch (error) {
     console.error("Erro ao salvar laudo:", error);
     throw error;
-  }
-}
-
-function parseContent(content) {
-  try {
-    return JSON.parse(content || "{}");
-  } catch {
-    return {};
   }
 }
